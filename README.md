@@ -3,7 +3,7 @@
 > [!WARNING]
 > NFO Is highly experimental, things can break, might not work as expected or the composed music might suck!
 
-<p style="text-align: center"><img style="height:100%" src="assets/orche-clawd.png"></p>
+<p style="text-align: center"><img style="height:100%" src="https://raw.githubusercontent.com/javierfurus/nfo/refs/heads/main/assets/orche-clawd.png"></p>
 
 > (Yes, I know orchestrators don't have staffs - but look how happy he is)
 
