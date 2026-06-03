@@ -72,7 +72,6 @@ export async function restoreOrchestra(
     return { action: "attached", orchestraId };
   }
 
-  // Spec §4.3: recreate the tmux session, --resume the Orchestrator.
   await createDetachedSession(name, state.project_path);
   await ensureNfoSessionUi(name);
   await ensureDashboardWindow(name, state.project_path, orchestraId);
