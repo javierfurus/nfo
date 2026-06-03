@@ -31,43 +31,65 @@ export interface AppViewProps {
 }
 
 export function AppView(props: AppViewProps): ReactElement {
-  if (props.showHelp === true) {
-    return <Help />;
-  }
   const pendingCount = props.pendingCount ?? 0;
   return (
-    <Box flexDirection="row">
-      <OrchestratorPane
-        title={props.orchestratorTitle}
-        lines={props.orchestratorLines}
-        focused={props.orchestratorFocused}
-        connected={props.orchestratorConnected}
-      />
-      <Box width={48} flexDirection="column">
-        <SidebarHeader
-          orchestraId={props.currentId}
-          musicianCount={props.musicians.length}
-          pendingCount={pendingCount}
+    <Box width="100%" height="100%">
+      <Box flexDirection="row" width="100%" height="100%">
+        <OrchestratorPane
+          title={props.orchestratorTitle}
+          lines={props.orchestratorLines}
+          focused={props.orchestratorFocused}
+          connected={props.orchestratorConnected}
         />
-        <ConcertHall
-          orchestras={props.orchestras}
-          currentId={props.currentId}
-        />
-        <Auditorium
-          musicians={props.musicians}
-          activity={props.activity}
-          selectedIndex={props.selectedIndex}
-          now={props.now}
-          orchestratorActive={props.orchestratorActive ?? false}
-          activeMusicianId={props.activeMusicianId ?? null}
-        />
-        <StatusBar
-          permissionLevel={props.permissionLevel}
-          tokenHint={props.tokenHint}
-          pendingCount={pendingCount}
-          dismissConfirmation={props.dismissConfirmation}
-          orchestratorFocused={props.orchestratorFocused}
-        />
+        <Box width={48} flexDirection="column">
+          <SidebarHeader
+            orchestraId={props.currentId}
+            musicianCount={props.musicians.length}
+            pendingCount={pendingCount}
+          />
+          <ConcertHall
+            orchestras={props.orchestras}
+            currentId={props.currentId}
+          />
+          <Auditorium
+            musicians={props.musicians}
+            activity={props.activity}
+            selectedIndex={props.selectedIndex}
+            now={props.now}
+            orchestratorActive={props.orchestratorActive ?? false}
+            activeMusicianId={props.activeMusicianId ?? null}
+          />
+          <StatusBar
+            permissionLevel={props.permissionLevel}
+            tokenHint={props.tokenHint}
+            pendingCount={pendingCount}
+            dismissConfirmation={props.dismissConfirmation}
+            orchestratorFocused={props.orchestratorFocused}
+          />
+        </Box>
+        {props.showHelp && (
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            width="100%"
+            height="100%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <Box
+              borderStyle="round"
+              paddingX={1}
+              paddingY={1}
+              width={64}
+              flexDirection="column"
+              borderBackgroundColor={"black"}
+              backgroundColor="black"
+            >
+              <Help />
+            </Box>
+          </Box>
+        )}
       </Box>
     </Box>
   );

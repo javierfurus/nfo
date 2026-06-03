@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
 import { AppView } from '../../src/tui/AppView.js';
+import { OrchestratorPane } from '../../src/tui/OrchestratorPane.js';
 import type { Musician } from '../../src/state.types.js';
 import type { OrchestraSummary } from '../../src/commands/list.js';
 
@@ -65,7 +66,27 @@ describe('AppView', () => {
       />,
     );
     const frame = (lastFrame() ?? '').toLowerCase();
-    expect(frame).toContain('keybindings');
-    expect(frame).not.toContain('auditorium');
+    expect(frame).toContain('cancel pending dismiss');
+    expect(frame).toContain('mouse wheel');
+    expect(frame).toContain('claude');
+  });
+});
+
+describe('OrchestratorPane', () => {
+  it('renders lines in a plain box without scroll props', () => {
+    const { lastFrame } = render(
+      <OrchestratorPane
+        title="Orchestrator"
+        lines={[
+          { spans: [{ text: 'line one' }] },
+          { spans: [{ text: 'line two' }] },
+        ]}
+        focused={false}
+        connected={true}
+      />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('line one');
+    expect(frame).toContain('line two');
   });
 });
