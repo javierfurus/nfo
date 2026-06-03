@@ -29,11 +29,11 @@ This will create an **Orchestra** with your project's name and an **Orchestrator
 
 Everything that you have in your regular Claude session is available in your NFO session. Just ask your Orchestrator what you want to do, and it will do it for you by spawning several **Musicians** to tackle the task. 
 
-![main-screen](./assets/main-screen.png)
+![main-screen](https://raw.githubusercontent.com/javierfurus/nfo/refs/heads/main/assets/main-screen.png)
 
 These Musicians are either `Sonnet` or `Haiku` agents used to explore your codebase or code. Using **Hub-and-Spoke** the agents communicate with the Orchestrator and the Orchestrator decides the next steps. This structure allows the smarter model to keep its context clean and save cost by using other models at what they are best. They are all assigned to your Orchestra and you can freely move between them, see what they are doing or steer them by using `/btw`. You can also ask your Orchestrator to tell them what to do!
 
-![agent-screen](./assets/agent-screen.png)
+![agent-screen](https://raw.githubusercontent.com/javierfurus/nfo/refs/heads/main/assets/agent-screen.png)
 
 They can work in parallel or sequentially, depending on what the task demands. NFO leverages **worktrees** to keep your environment clean and avoid agents stepping on each other's toes.
 
