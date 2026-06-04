@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box } from "ink";
-import type { Musician } from "../state.types.js";
-import type { OrchestraSummary } from "../commands/list.js";
-import type { EmbeddedTerminalLine } from "./embedded-terminal.js";
+import type { Musician } from "../../state.types.js";
+import type { OrchestraSummary } from "../../commands/list.js";
+import type { EmbeddedTerminalLine } from "../embedded-terminal.js";
 import { ConcertHall } from "./ConcertHall.js";
 import { Auditorium } from "./Auditorium.js";
 import { StatusBar } from "./StatusBar.js";
@@ -28,6 +28,7 @@ export interface AppViewProps {
   orchestratorConnected: boolean;
   activeMusicianId?: string | null;
   orchestratorActive?: boolean;
+  version: string;
 }
 
 export function AppView(props: AppViewProps): ReactElement {
@@ -46,6 +47,7 @@ export function AppView(props: AppViewProps): ReactElement {
             orchestraId={props.currentId}
             musicianCount={props.musicians.length}
             pendingCount={pendingCount}
+            version={props.version}
           />
           <ConcertHall
             orchestras={props.orchestras}

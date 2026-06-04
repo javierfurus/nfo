@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
-import { SidebarHeader } from '../../src/tui/SidebarHeader.js';
+import { SidebarHeader } from '../../src/tui/components/SidebarHeader.js';
 
 describe('SidebarHeader', () => {
   it('renders orchestra id and musician counts', () => {

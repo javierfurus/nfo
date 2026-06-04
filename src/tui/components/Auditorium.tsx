@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import type { Musician } from "../state.types.js";
-import { statusIcon, statusColor } from "./status-icon.js";
-import { formatRelativeTime } from "./format-time.js";
+import type { Musician } from "../../state.types.js";
+import { statusIcon, statusColor } from "../status-icon.js";
+import { formatRelativeTime } from "../format-time.js";
 
 export interface AuditoriumProps {
   musicians: Musician[];

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
-import { StatusBar } from '../../src/tui/StatusBar.js';
+import { StatusBar } from '../../src/tui/components/StatusBar.js';
 
 describe('StatusBar', () => {
   it('shows permission level and the token placeholder', () => {

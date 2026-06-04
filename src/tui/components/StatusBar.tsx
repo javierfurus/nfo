@@ -36,9 +36,7 @@ export function StatusBar(props: StatusBarProps): ReactElement {
           terminal
         </Text>
       )}
-      <Text dimColor={true}>
-        [q] detach [F6] dashboard [F7] orchestrator [?] help
-      </Text>
+      <Text dimColor={true}>[q] detach [?] help</Text>
     </Box>
   );
 }

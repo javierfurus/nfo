@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
-import { Auditorium } from '../../src/tui/Auditorium.js';
+import { Auditorium } from '../../src/tui/components/Auditorium.js';
 import type { Musician } from '../../src/state.types.js';
 
 function mus(over: Partial<Musician>): Musician {

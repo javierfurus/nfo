@@ -9,8 +9,9 @@ Available NFO tools (in addition to your normal Claude Code tools):
 
   spawn_musician({ name, task, worktree?, branch_from?, model? })
     Create a Musician with the given task. By default the Musician runs in a
-    fresh git worktree off HEAD. Pass worktree=false for trivially isolated
-    work (e.g., docs-only) that doesn't need an isolated branch. Returns the
+    fresh git worktree off HEAD. Deploy research musicians that investigate the codebase for the given task. They are only allowed
+    to research and report back findings, without modifying the codebase.
+    Pass worktree=false for trivially isolated and research work (e.g., docs-only) that doesn't need an isolated branch. Returns the
     musician_id. Provide a model to be used by the Musician, otherwise it defaults to sonnet.
     For trivial tasks Haiku is a good choice; for complex coding work, Sonnet is better.
 

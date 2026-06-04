@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
-import { Help } from '../../src/tui/Help.js';
+import { Help } from '../../src/tui/components/Help.js';
 
 describe('Help', () => {
   it('lists the core keybindings', () => {

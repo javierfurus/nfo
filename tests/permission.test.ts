@@ -7,13 +7,20 @@ import {
 } from '../src/permission.js';
 
 describe('permission levels', () => {
-  it('lists all four levels in order from most to least permissive', () => {
-    expect(PERMISSION_LEVELS).toEqual(['auto', 'autonomous', 'supervised', 'strict']);
+  it('lists all five levels in order from most to least permissive', () => {
+    expect(PERMISSION_LEVELS).toEqual([
+      'dangerouslySkipPermissions',
+      'auto',
+      'acceptEdits',
+      'supervised',
+      'strict',
+    ]);
   });
 
   it('isPermissionLevel rejects unknown strings', () => {
+    expect(isPermissionLevel('dangerouslySkipPermissions')).toBe(true);
     expect(isPermissionLevel('auto')).toBe(true);
-    expect(isPermissionLevel('autonomous')).toBe(true);
+    expect(isPermissionLevel('acceptEdits')).toBe(true);
     expect(isPermissionLevel('supervised')).toBe(true);
     expect(isPermissionLevel('strict')).toBe(true);
     expect(isPermissionLevel('YOLO')).toBe(false);
@@ -21,8 +28,11 @@ describe('permission levels', () => {
   });
 
   it('claudeFlagsForLevel returns the right flag list per level', () => {
-    expect(claudeFlagsForLevel('auto')).toEqual(['--dangerously-skip-permissions']);
-    expect(claudeFlagsForLevel('autonomous')).toEqual(['--permission-mode', 'acceptEdits']);
+    expect(claudeFlagsForLevel('dangerouslySkipPermissions')).toEqual([
+      '--dangerously-skip-permissions',
+    ]);
+    expect(claudeFlagsForLevel('auto')).toEqual(['--permission-mode', 'auto']);
+    expect(claudeFlagsForLevel('acceptEdits')).toEqual(['--permission-mode', 'acceptEdits']);
     expect(claudeFlagsForLevel('supervised')).toEqual(['--permission-mode', 'default']);
     expect(claudeFlagsForLevel('strict')).toEqual(['--permission-mode', 'plan']);
   });

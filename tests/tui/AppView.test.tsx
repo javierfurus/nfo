@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
-import { AppView } from '../../src/tui/AppView.js';
-import { OrchestratorPane } from '../../src/tui/OrchestratorPane.js';
+import { AppView } from '../../src/tui/components/AppView.js';
+import { OrchestratorPane } from '../../src/tui/components/OrchestratorPane.js';
 import type { Musician } from '../../src/state.types.js';
 import type { OrchestraSummary } from '../../src/commands/list.js';
 

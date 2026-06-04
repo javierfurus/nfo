@@ -1,9 +1,10 @@
-import { render } from 'ink';
-import { App } from '../tui/App.js';
-import { readState } from '../state.js';
+import { render } from "ink";
+import { App } from "../tui/components/App.js";
+import { readState } from "../state.js";
 
 export interface RunTuiOptions {
   orchestraId: string;
+  version: string;
 }
 
 export async function runTui(opts: RunTuiOptions): Promise<void> {
@@ -11,6 +12,11 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
   if (!state) {
     throw new Error(`Unknown orchestra: ${opts.orchestraId}`);
   }
-  const instance = render(<App orchestraId={opts.orchestraId} />, { exitOnCtrlC: false });
+  const instance = render(
+    <App orchestraId={opts.orchestraId} version={opts.version} />,
+    {
+      exitOnCtrlC: false,
+    },
+  );
   await instance.waitUntilExit();
 }

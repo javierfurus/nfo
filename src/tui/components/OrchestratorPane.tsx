@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import type {
   EmbeddedTerminalLine,
   EmbeddedTerminalSpan,
-} from "./embedded-terminal.js";
+} from "../embedded-terminal.js";
 
 export interface OrchestratorPaneProps {
   title: string;

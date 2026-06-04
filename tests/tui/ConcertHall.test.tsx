@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
-import { ConcertHall } from '../../src/tui/ConcertHall.js';
+import { ConcertHall } from '../../src/tui/components/ConcertHall.js';
 import type { OrchestraSummary } from '../../src/commands/list.js';
 
 function orch(over: Partial<OrchestraSummary>): OrchestraSummary {

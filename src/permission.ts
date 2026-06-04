@@ -1,4 +1,4 @@
-export const PERMISSION_LEVELS = ['auto', 'autonomous', 'supervised', 'strict'] as const;
+export const PERMISSION_LEVELS = ['dangerouslySkipPermissions', 'auto', 'acceptEdits', 'supervised', 'strict'] as const;
 export type PermissionLevel = (typeof PERMISSION_LEVELS)[number];
 
 export function isPermissionLevel(s: string): s is PermissionLevel {
@@ -7,11 +7,11 @@ export function isPermissionLevel(s: string): s is PermissionLevel {
 
 export function claudeFlagsForLevel(level: PermissionLevel): string[] {
   switch (level) {
-    case 'auto':
-      // Spec §5.2 + §12.2 open question: exact bypass flag is `--dangerously-skip-permissions`
-      // in current Claude Code releases. If a future release renames it, update here.
+    case 'dangerouslySkipPermissions':
       return ['--dangerously-skip-permissions'];
-    case 'autonomous':
+    case 'auto':
+      return ['--permission-mode', 'auto'];
+    case 'acceptEdits':
       return ['--permission-mode', 'acceptEdits'];
     case 'supervised':
       return ['--permission-mode', 'default'];
@@ -20,11 +20,11 @@ export function claudeFlagsForLevel(level: PermissionLevel): string[] {
   }
 }
 
-export const AUTO_CONFIRM_PHRASE = 'I understand';
+export const DANGEROUSLY_SKIP_PERMISSIONS_CONFIRM_PHRASE = 'I understand';
 
-export const AUTO_WARNING = `⚠ AUTO mode disables all permission checks.
+export const DANGEROUSLY_SKIP_PERMISSIONS_WARNING = `⚠ "Dangerously skip permissions" mode disables all permission checks.
 Musicians can execute arbitrary shell commands, modify files anywhere on
 this system, and access the network without asking. Worktrees limit but
 do not contain risky operations. Use this only in trusted sandboxes or
 when you accept these risks.
-Type "${AUTO_CONFIRM_PHRASE}" to continue.`;
+Type "${DANGEROUSLY_SKIP_PERMISSIONS_CONFIRM_PHRASE}" to continue.`;

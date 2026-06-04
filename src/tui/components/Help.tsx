@@ -42,15 +42,6 @@ const ROWS: Row[] = [
     label:
       "scroll the left terminal through local scrollback when the pointer is over that pane",
   },
-  {
-    key: "F6",
-    label: "tmux global key: jump to the dashboard window from any NFO window",
-  },
-  {
-    key: "F7",
-    label:
-      "tmux global key: jump to the Orchestrator window from any NFO window",
-  },
   { key: "?", label: "toggle this help / close" },
 ];
 

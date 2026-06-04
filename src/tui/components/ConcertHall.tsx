@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import type { OrchestraSummary } from "../commands/list.js";
+import type { OrchestraSummary } from "../../commands/list.js";
 
 export interface ConcertHallProps {
   orchestras: OrchestraSummary[];

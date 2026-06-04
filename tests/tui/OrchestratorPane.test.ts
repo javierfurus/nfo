@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSpanStyle } from '../../src/tui/OrchestratorPane.js';
+import { resolveSpanStyle } from '../../src/tui/components/OrchestratorPane.js';
 
 describe('resolveSpanStyle', () => {
   it('renders a visible block cursor when the terminal is focused', () => {

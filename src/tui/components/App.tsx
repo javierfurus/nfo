@@ -2,30 +2,30 @@ import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useInput, useStdout, useWindowSize } from "ink";
 import { AppView } from "./AppView.js";
-import { reduceKey } from "./keymap.js";
-import { pollActivity } from "./poll-activity.js";
+import { reduceKey } from "../keymap.js";
+import { pollActivity } from "../poll-activity.js";
 import {
   syncMusicianIdleState,
   type MusicianIdleTracker,
-} from "./poll-idle.js";
-import { pollPermissions } from "./poll-permission.js";
-import { setMusicianStatus } from "../state-updaters.js";
-import { watchOrchestraState, type StopWatching } from "./watch-state.js";
-import { listOrchestras, type OrchestraSummary } from "../commands/list.js";
+} from "../poll-idle.js";
+import { pollPermissions } from "../poll-permission.js";
+import { setMusicianStatus } from "../../state-updaters.js";
+import { watchOrchestraState, type StopWatching } from "../watch-state.js";
+import { listOrchestras, type OrchestraSummary } from "../../commands/list.js";
 import {
   EmbeddedTerminal,
   type EmbeddedTerminalSnapshot,
-} from "./embedded-terminal.js";
+} from "../embedded-terminal.js";
 import {
   claimEmbeddedSessionLease,
   embeddedSessionLeaseIsCurrent,
   runEmbeddedSessionOperation,
-} from "./embedded-session-lifecycle.js";
+} from "../embedded-session-lifecycle.js";
 import {
   toTerminalMouseScroll,
   toTerminalInput,
   toTerminalViewportCommand,
-} from "./terminal-input.js";
+} from "../terminal-input.js";
 import {
   detachCurrentClient,
   embeddedSessionName,
@@ -33,15 +33,16 @@ import {
   killSession,
   selectWindow,
   sessionName,
-} from "../tmux.js";
-import { openNotes } from "../commands/notes.js";
-import { dismissMusician } from "../musicians/dismiss.js";
-import { readState } from "../state.js";
-import { notifyAwaitingPermission } from "../notify.js";
-import type { Musician, OrchestraState } from "../state.types.js";
+} from "../../tmux.js";
+import { openNotes } from "../../commands/notes.js";
+import { dismissMusician } from "../../musicians/dismiss.js";
+import { readState } from "../../state.js";
+import { notifyAwaitingPermission } from "../../notify.js";
+import type { Musician, OrchestraState } from "../../state.types.js";
 
 export interface AppProps {
   orchestraId: string;
+  version: string;
 }
 
 function textLines(...lines: string[]): EmbeddedTerminalSnapshot["lines"] {
@@ -358,10 +359,10 @@ export function App(props: AppProps): ReactElement {
     const mouseScroll = toTerminalMouseScroll(input);
     if (mouseScroll) {
       const insideTerminalViewport =
-        mouseScroll.column >= terminalScreenLeft
-        && mouseScroll.column <= terminalScreenRight
-        && mouseScroll.row >= terminalScreenTop
-        && mouseScroll.row <= terminalScreenBottom;
+        mouseScroll.column >= terminalScreenLeft &&
+        mouseScroll.column <= terminalScreenRight &&
+        mouseScroll.row >= terminalScreenTop &&
+        mouseScroll.row <= terminalScreenBottom;
       if (insideTerminalViewport) {
         const translatedColumn = mouseScroll.column - terminalScreenLeft + 1;
         const translatedRow = mouseScroll.row - terminalScreenTop + 1;
@@ -527,6 +528,7 @@ export function App(props: AppProps): ReactElement {
       orchestratorConnected={orchestratorSnapshot.connected}
       activeMusicianId={activePaneMusician?.id ?? null}
       orchestratorActive={activePaneMusician === null}
+      version={props.version}
     />
   );
 }
