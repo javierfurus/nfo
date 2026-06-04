@@ -1,7 +1,7 @@
 {
   "name": "nfo-cli",
   "version": "0.0.2-c",
-  "description": "NoFluffOrchestra — TUI multi-agent orchestrator for existing repos",
+  "description": "No Fluff Orchestra — a simple, fluff-free CLI multi-agent orchestrator",
   "type": "module",
   "bin": {
     "nfo": "./dist/cli.js"
