@@ -3,6 +3,10 @@
   "version": "0.0.5",
   "description": "No Fluff Orchestra — a simple, fluff-free CLI multi-agent orchestrator",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/javierfurus/nfo.git"
+  },
   "files": [
     "dist"
   ],
