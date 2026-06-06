@@ -1,0 +1,65 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+  publish-latest:
+    needs: release-please
+    if: ${{ github.event_name == 'push' && needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm publish --provenance --access public
+  publish-dev:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - name: Compute dev version
+        id: ver
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          NEXT="$(node -p "const v=require('./package.json').version.split('-')[0].split('.'); v[2]=+v[2]+1; v.join('.')")"
+          echo "version=${NEXT}-${SHORT_SHA}-dev" >> "$GITHUB_OUTPUT"
+      - run: npm version "${{ steps.ver.outputs.version }}" --no-git-tag-version
+      - run: npm run build
+      - run: npm test
+      - run: npm publish --tag dev --provenance --access public
