@@ -40,6 +40,11 @@ export async function dispatch(
             ? (args.model as "sonnet" | "haiku")
             : "sonnet",
         dryRun: opts.dryRun,
+        allowedTools:
+          Array.isArray(args.allowed_tools) &&
+          (args.allowed_tools as unknown[]).every((t) => typeof t === "string")
+            ? (args.allowed_tools as string[])
+            : undefined,
       });
       return r;
     }
