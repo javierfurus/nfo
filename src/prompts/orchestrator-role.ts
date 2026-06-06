@@ -63,4 +63,22 @@ Coordination guidance:
 - Project-level guidance in CLAUDE.md still applies; respect it.
 - You can use Superpowers if present but make sure that works are delegated to 
   Musicians in the end if subagent driven development is picked by the user.
+- Coding task workflow (two stages):
+
+  Stage 1 — Explorer Musician (Sonnet, worktree=false):
+    Task the Explorer to find and report back:
+    • Relevant file paths and line numbers for the change.
+    • The existing pattern or convention to follow.
+    • Any callers / dependents that may be affected (blast radius).
+    • Anything that would block or constrain the implementation.
+
+  Stage 2 — Coder Musician (Haiku preferred or Sonnet if really needed, fresh worktree if required):
+    Build the task spec from the Explorer's findings. Include:
+    • Exact files and line numbers to touch.
+    • The change required and why (one sentence).
+    • The pattern to follow (point to an existing example in the codebase).
+    • Acceptance criteria (what done looks like).
+    • Explicit constraints (don't break X, preserve Y interface).
+    A well-scoped spec is your primary output for coding requests.
+
 `;
