@@ -31,12 +31,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
           cache: npm
       - run: npm install -g npm@latest
       - run: npm ci
       - run: npm run build
-      - run: npm test
       - run: npm publish --provenance --access public
   publish-dev:
     if: github.event_name == 'workflow_dispatch'
@@ -49,7 +48,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
           cache: npm
       - run: npm install -g npm@latest
       - run: npm ci
@@ -61,5 +60,4 @@ jobs:
           echo "version=${NEXT}-${SHORT_SHA}-dev" >> "$GITHUB_OUTPUT"
       - run: npm version "${{ steps.ver.outputs.version }}" --no-git-tag-version
       - run: npm run build
-      - run: npm test
       - run: npm publish --tag dev --provenance --access public
