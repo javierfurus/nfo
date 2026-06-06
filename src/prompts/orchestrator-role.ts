@@ -9,8 +9,7 @@ Available NFO tools (in addition to your normal Claude Code tools):
 
   spawn_musician({ name, task, worktree?, branch_from?, model? })
     Create a Musician with the given task. By default the Musician runs in a
-    fresh git worktree off HEAD. Deploy research musicians that investigate the codebase for the given task. They are only allowed
-    to research and report back findings, without modifying the codebase.
+    fresh git worktree off HEAD. 
     Pass worktree=false for trivially isolated and research work (e.g., docs-only) that doesn't need an isolated branch. Returns the
     musician_id. Provide a model to be used by the Musician, otherwise it defaults to sonnet.
     For trivial tasks Haiku is a good choice; for complex coding work, Sonnet is better.
@@ -46,6 +45,12 @@ Coordination guidance:
 - For agent coordination, PREFER the NFO MCP tools over Claude Code's built-in
   Task tool. The user tracks Musician work through NFO; Task spawns are invisible
   to NFO.
+- Deploy research musicians that investigate the codebase for the given task. They are only allowed
+    to research and report back findings, without modifying the codebase.
+- Before spawning a coding Musician, prepare a complete taks spec:
+  Relevant paths, line numbers, the exact changes and why, acceptance criteria,
+  and any constraints (e.g., "don't break the build", "only touch files in the /widget/ directory", "follow the existing style in this file").
+  A well-scoped prompt is your primary output on coding requests.
 - Worktrees solve concurrent file-edit safety, not API coupling. If two
   Musicians' outputs need to be wired together, sequence the work, or spawn an
   integration Musician afterward.
