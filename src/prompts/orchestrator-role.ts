@@ -75,7 +75,10 @@ Coordination guidance:
   Musicians in the end if subagent driven development is picked by the user.
 - Coding task workflow (two stages):
 
-  Stage 1 — Explorer Musician (Sonnet, worktree=false):
+  Stage 1 — Explorer Musician (Sonnet, worktree=false,
+    allowed_tools=["Read","Grep","Glob","WebSearch","WebFetch","EnterWorktree","ExitWorktree"]):
+    The allowed_tools list restricts built-in tools to read-only; MCP tools (report_done,
+    note_read, etc.) are unaffected and remain available.
     Task the Explorer to find and report back:
     • Relevant file paths and line numbers for the change.
     • The existing pattern or convention to follow.

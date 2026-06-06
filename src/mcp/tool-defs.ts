@@ -39,6 +39,12 @@ export const NFO_TOOLS: NfoToolDef[] = [
           enum: ["sonnet", "haiku"],
           description: "Optional subagent model (defaults to sonnet).",
         },
+        allowed_tools: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional allow-list of BUILT-IN claude tools (maps to --tools). Restricts built-in tools only; MCP tools remain available. Use for read-only Explorer musicians, e.g. [\"Read\",\"Grep\",\"Glob\"].",
+        },
       },
       required: ["name", "task"],
       additionalProperties: false,

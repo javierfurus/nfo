@@ -8,6 +8,7 @@ export interface BuildClaudeCommandOptions {
   resumeSessionId?: string | null;
   prompt?: string;
   model?: SubagentModel;
+  allowedTools?: string[];
 }
 
 export function buildClaudeCommand(opts: BuildClaudeCommandOptions): string {
@@ -25,6 +26,10 @@ export function buildClaudeCommand(opts: BuildClaudeCommandOptions): string {
 
   if (opts.model) {
     args.push("--model", opts.model);
+  }
+
+  if (opts.allowedTools && opts.allowedTools.length > 0) {
+    args.push("--tools", opts.allowedTools.join(","));
   }
 
   if (opts.prompt !== undefined) {

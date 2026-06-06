@@ -21,6 +21,7 @@ export interface CreateMusicianOptions {
   branchFrom?: string; // default HEAD
   model: "sonnet" | "haiku";
   dryRun?: boolean; // skip launching claude; useful for tests
+  allowedTools?: string[];
 }
 
 export type CreateMusicianResult = {
@@ -92,6 +93,7 @@ export async function createMusician(
       promptFile,
       prompt: buildMusicianInitialPrompt(opts.task),
       model: opts.model,
+      allowedTools: opts.allowedTools,
     });
     await setPaneOption(
       `${session}:${tmuxWindowId.trim()}`,
