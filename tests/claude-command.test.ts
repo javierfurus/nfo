@@ -12,7 +12,7 @@ describe('buildClaudeCommand', () => {
     });
 
     expect(command).toBe(
-      "'claude' '--permission-mode' 'acceptEdits' '--mcp-config' '/tmp/with spaces/mcp-config.json' '--append-system-prompt-file' '/tmp/with spaces/musician-prompt.md' '--model' 'haiku' 'fix the bug in it'\"'\"'s startup path'",
+      "'claude' '--permission-mode' 'acceptEdits' '--mcp-config' '/tmp/with spaces/mcp-config.json' '--append-system-prompt-file' '/tmp/with spaces/musician-prompt.md' '--model' 'haiku' '--allowedTools' 'mcp__nfo' '--' 'fix the bug in it'\"'\"'s startup path'",
     );
   });
 
@@ -24,8 +24,17 @@ describe('buildClaudeCommand', () => {
     });
 
     expect(command).toBe(
-      "'claude' '--resume' 'session-123' '--mcp-config' '/tmp/mcp-config.json'",
+      "'claude' '--resume' 'session-123' '--mcp-config' '/tmp/mcp-config.json' '--allowedTools' 'mcp__nfo'",
     );
+  });
+
+  it('always pre-approves nfo MCP tools via --allowedTools', () => {
+    const command = buildClaudeCommand({
+      flags: [],
+      mcpConfigPath: '/tmp/mcp-config.json',
+    });
+
+    expect(command).toContain("'--allowedTools' 'mcp__nfo'");
   });
 
   it('appends --tools with comma-joined list when allowedTools is provided', () => {
@@ -36,6 +45,7 @@ describe('buildClaudeCommand', () => {
     });
 
     expect(command).toContain("'--tools' 'Read,Grep,Glob'");
+    expect(command).toContain("'--allowedTools' 'mcp__nfo'");
   });
 
   it('omits --tools when allowedTools is absent', () => {
@@ -45,6 +55,7 @@ describe('buildClaudeCommand', () => {
     });
 
     expect(command).not.toContain('--tools');
+    expect(command).toContain("'--allowedTools' 'mcp__nfo'");
   });
 
   it('omits --tools when allowedTools is an empty array', () => {
@@ -55,5 +66,6 @@ describe('buildClaudeCommand', () => {
     });
 
     expect(command).not.toContain('--tools');
+    expect(command).toContain("'--allowedTools' 'mcp__nfo'");
   });
 });

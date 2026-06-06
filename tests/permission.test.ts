@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PERMISSION_LEVELS,
   claudeFlagsForLevel,
+  effectiveLevelForModel,
   isPermissionLevel,
   type PermissionLevel,
 } from '../src/permission.js';
@@ -35,5 +36,27 @@ describe('permission levels', () => {
     expect(claudeFlagsForLevel('acceptEdits')).toEqual(['--permission-mode', 'acceptEdits']);
     expect(claudeFlagsForLevel('supervised')).toEqual(['--permission-mode', 'default']);
     expect(claudeFlagsForLevel('strict')).toEqual(['--permission-mode', 'plan']);
+  });
+});
+
+describe('effectiveLevelForModel', () => {
+  it('substitutes dangerouslySkipPermissions when haiku is in auto mode', () => {
+    expect(effectiveLevelForModel('auto', 'haiku')).toBe('dangerouslySkipPermissions');
+  });
+
+  it('keeps supervised unchanged for haiku', () => {
+    expect(effectiveLevelForModel('supervised', 'haiku')).toBe('supervised');
+  });
+
+  it('keeps dangerouslySkipPermissions unchanged for haiku', () => {
+    expect(effectiveLevelForModel('dangerouslySkipPermissions', 'haiku')).toBe('dangerouslySkipPermissions');
+  });
+
+  it('keeps auto unchanged for sonnet', () => {
+    expect(effectiveLevelForModel('auto', 'sonnet')).toBe('auto');
+  });
+
+  it('keeps auto unchanged when model is undefined', () => {
+    expect(effectiveLevelForModel('auto', undefined)).toBe('auto');
   });
 });

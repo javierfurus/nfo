@@ -150,10 +150,11 @@ describe('MCP handlers dispatch', () => {
 
     await new Promise(r => setTimeout(r, 250));
     const out = await capturePane(`${sessionName(orchId)}:0`, 80);
-    expect(out).toContain(`Musician ${musician_id} (reviewer) reported done and is now idle.`);
-    expect(out).toContain('Implemented the requested change');
-    expect(out).toContain('dismiss_musician');
-    expect(out).toContain('message_musician');
+    const flat = out.split('\n').map((l) => l.trimEnd()).join('');
+    expect(flat).toContain(`Musician ${musician_id} (reviewer) reported done and is now idle.`);
+    expect(flat).toContain('Implemented the requested change');
+    expect(flat).toContain('dismiss_musician');
+    expect(flat).toContain('message_musician');
   });
 
   it('throws on unknown tool', async () => {
