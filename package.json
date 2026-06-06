@@ -1,9 +1,11 @@
 {
   "name": "nfo-cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "No Fluff Orchestra — a simple, fluff-free CLI multi-agent orchestrator",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "bin": {
     "nfo": "./dist/cli.js"
   },
