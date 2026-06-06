@@ -1,4 +1,5 @@
 import { createMusician } from "../musicians/spawn.js";
+import { resolveAllowedTools, type MusicianRole } from "../musicians/roles.js";
 import {
   drainQueuedMusicianMessages,
   messageMusician,
@@ -40,11 +41,13 @@ export async function dispatch(
             ? (args.model as "sonnet" | "haiku")
             : "sonnet",
         dryRun: opts.dryRun,
-        allowedTools:
+        allowedTools: resolveAllowedTools(
           Array.isArray(args.allowed_tools) &&
           (args.allowed_tools as unknown[]).every((t) => typeof t === "string")
             ? (args.allowed_tools as string[])
             : undefined,
+          typeof args.role === "string" ? (args.role as MusicianRole) : undefined,
+        ),
       });
       return r;
     }

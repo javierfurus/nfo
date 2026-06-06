@@ -32,4 +32,9 @@ describe('NFO MCP tool definitions', () => {
       description: 'Optional subagent model (defaults to sonnet).',
     });
   });
+
+  it('spawn_musician exposes the optional role property with explorer/coder enum', () => {
+    const spawnTool = NFO_TOOLS.find((tool) => tool.name === 'spawn_musician');
+    expect((spawnTool?.inputSchema.properties.role as { enum?: unknown[] })?.enum).toEqual(['explorer', 'coder']);
+  });
 });
