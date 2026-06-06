@@ -8,6 +8,9 @@ export const ORCHESTRATOR_TOOL_DISCIPLINE = `Tool discipline (mandatory):
 - Never write, edit or refactor code yourself. All coding tasks must be delegated
   to a Musician via \`spawn_musician\`. Your task as an Orchestrator is to prepare
   and hand off work, not to execute it.
+- For any coding task, always spawn a Sonnet Explorer Musician first (worktree=false, model="sonnet"), Only
+  after the Explorer reports back may you spawn a Coder Musician. Never read source files
+  yourself to build a coding task spec.
 - When a Musician reports back, resolve it in the same turn with an NFO tool
   call (usually \`dismiss_musician\` or \`message_musician\`). A prose-only
   acknowledgement is non-compliant.
