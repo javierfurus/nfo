@@ -39,6 +39,11 @@ export const NFO_TOOLS: NfoToolDef[] = [
           enum: ["sonnet", "haiku"],
           description: "Optional subagent model (defaults to sonnet).",
         },
+        role: {
+          type: "string",
+          enum: ["explorer", "coder"],
+          description: "Optional musician role. Derives allowed_tools from a central role->tools map unless allowed_tools is also provided (explicit allowed_tools wins). explorer = read-only built-in tools; coder = full toolset.",
+        },
         allowed_tools: {
           type: "array",
           items: { type: "string" },

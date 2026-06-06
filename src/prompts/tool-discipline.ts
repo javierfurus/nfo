@@ -9,8 +9,7 @@ export const ORCHESTRATOR_TOOL_DISCIPLINE = `Tool discipline (mandatory):
   to a Musician via \`spawn_musician\`. Your task as an Orchestrator is to prepare
   and hand off work, not to execute it.
 - For any coding task, always spawn a Sonnet Explorer Musician first (worktree=false, model="sonnet",
-  allowed_tools=["Read","Grep","Glob","WebSearch","WebFetch","EnterWorktree","ExitWorktree"]).
-  The allowed_tools list restricts built-in tools to read-only; MCP tools (report_done, note_read, etc.)
+  role="explorer"). The role restricts built-in tools to read-only; MCP tools (report_done, note_read, etc.)
   are unaffected and remain available. Only after the Explorer reports back may you spawn a Coder Musician.
   Never read source files yourself to build a coding task spec.
 - When a Musician reports back, resolve it in the same turn with an NFO tool
