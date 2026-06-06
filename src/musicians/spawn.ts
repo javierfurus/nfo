@@ -5,8 +5,9 @@ import { addMusician } from "../state-updaters.js";
 import { readState } from "../state.js";
 import { orchestraDir, worktreesDir } from "../config.js";
 import { addWorktree, removeWorktree } from "../worktree.js";
-import { claudeFlagsForLevel } from "../permission.js";
-import { respawnPane, sessionName, setPaneOption } from "../tmux.js";
+import { claudeFlagsForLevel, effectiveLevelForModel } from "../permission.js";
+import { ensureDirTrusted } from "../claude-trust.js";
+import { sessionName, setPaneOption } from "../tmux.js";
 import { MUSICIAN_ROLE_PROMPT_V1 } from "../prompts/musician-role.js";
 import { buildMusicianInitialPrompt } from "../prompts/tool-discipline.js";
 import { nextMusicianId } from "./ids.js";
@@ -55,6 +56,7 @@ export async function createMusician(
       baseRef: opts.branchFrom,
     });
     workingDir = worktreePath;
+    ensureDirTrusted(worktreesDir(opts.orchestraId));
     if (!opts.dryRun) {
       // Fresh worktrees have no node_modules (gitignored); install before launch.
       try {
@@ -81,26 +83,14 @@ export async function createMusician(
 
   const session = sessionName(opts.orchestraId);
   const winLabel = `mus-${musicianId}-${sanitiseName(opts.name)}`;
-  const { stdout: tmuxWindowId } = await execa("tmux", [
-    "new-window",
-    "-t",
-    session,
-    "-n",
-    winLabel,
-    "-c",
-    workingDir,
-    "-d",
-    "-P",
-    "-F",
-    "#{window_id}",
-  ]);
 
+  let tmuxWindowId: string;
   if (!opts.dryRun) {
     const mcpConfigPath = await writeMusicianMcpConfig(
       opts.orchestraId,
       musicianId,
     );
-    const flags = claudeFlagsForLevel(state.permission_level);
+    const flags = claudeFlagsForLevel(effectiveLevelForModel(state.permission_level, opts.model));
     const cmd = buildClaudeCommand({
       flags,
       mcpConfigPath,
@@ -109,14 +99,42 @@ export async function createMusician(
       model: opts.model,
       allowedTools: opts.allowedTools,
     });
+    const { stdout } = await execa("tmux", [
+      "new-window",
+      "-t",
+      session,
+      "-n",
+      winLabel,
+      "-c",
+      workingDir,
+      "-d",
+      "-P",
+      "-F",
+      "#{window_id}",
+      cmd,
+    ]);
+    tmuxWindowId = stdout;
     await setPaneOption(
       `${session}:${tmuxWindowId.trim()}`,
       "remain-on-exit",
       "on",
     );
-    await respawnPane(`${session}:${tmuxWindowId.trim()}`, cmd);
   } else {
     await writeMusicianMcpConfig(opts.orchestraId, musicianId);
+    const { stdout } = await execa("tmux", [
+      "new-window",
+      "-t",
+      session,
+      "-n",
+      winLabel,
+      "-c",
+      workingDir,
+      "-d",
+      "-P",
+      "-F",
+      "#{window_id}",
+    ]);
+    tmuxWindowId = stdout;
   }
 
   const now = new Date().toISOString();

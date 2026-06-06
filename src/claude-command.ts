@@ -11,6 +11,8 @@ export interface BuildClaudeCommandOptions {
   allowedTools?: string[];
 }
 
+const NFO_MCP_ALLOW = "mcp__nfo";
+
 export function buildClaudeCommand(opts: BuildClaudeCommandOptions): string {
   const args = ["claude", ...opts.flags];
 
@@ -28,12 +30,14 @@ export function buildClaudeCommand(opts: BuildClaudeCommandOptions): string {
     args.push("--model", opts.model);
   }
 
+  args.push("--allowedTools", NFO_MCP_ALLOW);
+
   if (opts.allowedTools && opts.allowedTools.length > 0) {
     args.push("--tools", opts.allowedTools.join(","));
   }
 
   if (opts.prompt !== undefined) {
-    args.push(opts.prompt);
+    args.push("--", opts.prompt);
   }
 
   return args.map(shellQuote).join(" ");

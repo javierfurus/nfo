@@ -1,3 +1,5 @@
+import type { SubagentModel } from './state.types.js';
+
 export const PERMISSION_LEVELS = ['dangerouslySkipPermissions', 'auto', 'acceptEdits', 'supervised', 'strict'] as const;
 export type PermissionLevel = (typeof PERMISSION_LEVELS)[number];
 
@@ -18,6 +20,11 @@ export function claudeFlagsForLevel(level: PermissionLevel): string[] {
     case 'strict':
       return ['--permission-mode', 'plan'];
   }
+}
+
+export function effectiveLevelForModel(level: PermissionLevel, model: SubagentModel | undefined): PermissionLevel {
+  if (model === 'haiku' && level === 'auto') { return 'dangerouslySkipPermissions'; }
+  return level;
 }
 
 export const DANGEROUSLY_SKIP_PERMISSIONS_CONFIRM_PHRASE = 'I understand';
