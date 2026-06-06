@@ -4,7 +4,7 @@ import { execa } from "execa";
 import { addMusician } from "../state-updaters.js";
 import { readState } from "../state.js";
 import { orchestraDir, worktreesDir } from "../config.js";
-import { addWorktree } from "../worktree.js";
+import { addWorktree, removeWorktree } from "../worktree.js";
 import { claudeFlagsForLevel } from "../permission.js";
 import { respawnPane, sessionName, setPaneOption } from "../tmux.js";
 import { MUSICIAN_ROLE_PROMPT_V1 } from "../prompts/musician-role.js";
@@ -55,6 +55,20 @@ export async function createMusician(
       baseRef: opts.branchFrom,
     });
     workingDir = worktreePath;
+    if (!opts.dryRun) {
+      // Fresh worktrees have no node_modules (gitignored); install before launch.
+      try {
+        await execa("npm", ["ci"], { cwd: worktreePath });
+      } catch (err) {
+        // Roll back the half-created worktree so we don't leave an orphan, then abort.
+        try {
+          await removeWorktree({ repoRoot: state.project_path, path: worktreePath, force: true });
+        } catch {
+          // Ignore cleanup errors to surface the original failure.
+        }
+        throw new Error(`npm ci failed in worktree ${worktreePath}: ${(err as Error).message}`);
+      }
+    }
   } else {
     workingDir = state.project_path;
   }
