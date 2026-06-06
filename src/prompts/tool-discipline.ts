@@ -14,6 +14,9 @@ export const ORCHESTRATOR_TOOL_DISCIPLINE = `Tool discipline (mandatory):
 - When a Musician reports back, resolve it in the same turn with an NFO tool
   call (usually \`dismiss_musician\` or \`message_musician\`). A prose-only
   acknowledgement is non-compliant.
+- At the start of each session, before any Musician work begins, ask the user
+  about worktree preservation (or honor the saved preference in overview.md)
+  and persist the answer immediately via \`note_write\` to overview.md.
 `;
 
 export const MUSICIAN_TOOL_DISCIPLINE = `Tool discipline (mandatory):

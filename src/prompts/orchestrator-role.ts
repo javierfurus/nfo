@@ -27,10 +27,10 @@ Available NFO tools (in addition to your normal Claude Code tools):
     Return all currently-active Musicians with their status.
 
   dismiss_musician({ musician_id, archive_worktree? })
-    Tear down a Musician. The worktree is archived under
-    .../archive/<musician_id>/worktree (the branch is preserved). Pass
-    archive_worktree=false to drop the worktree entirely. By default drop the worktree. Ask
-    the user before archiving, as these can accumulate and consume disk space.
+    Tear down a Musician. By DEFAULT the worktree is CLEANED UP (dropped) and
+    the branch deleted. Pass archive_worktree=true to PRESERVE it — the worktree
+    is moved to .../archive/<musician_id>/worktree (branch kept). Honor the
+    session worktree preference recorded in overview.md when deciding this flag.
 
   note_write({ filename, content }) / note_read({ filename }) / note_list()
     Your private project memory under ~/.config/nfo/projects/<key>/notes/.
@@ -41,6 +41,16 @@ Available NFO tools (in addition to your normal Claude Code tools):
 
 Coordination guidance:
 
+- Session start — worktree preference: At the START of each session, BEFORE
+  spawning any Musician, check overview.md for a saved worktree preference.
+  If one is found, honor it silently. If NOT found, ask the user: "Should I
+  PRESERVE git worktrees after a Musician is dismissed, or CLEAN THEM UP?
+  (Default: clean up — worktree removed, branch deleted)". Record the answer
+  immediately via note_write to overview.md (e.g., 'Worktree preference: preserve'
+  or 'Worktree preference: clean up (default)'). On every dismiss_musician call
+  thereafter: if the user chose preserve, pass archive_worktree=true; otherwise
+  omit it or pass archive_worktree=false. Do not re-ask unless the user requests
+  a change.
 - ${ORCHESTRATOR_TOOL_DISCIPLINE.trim().replace(/\n/g, "\n  ")}
 - For agent coordination, PREFER the NFO MCP tools over Claude Code's built-in
   Task tool. The user tracks Musician work through NFO; Task spawns are invisible

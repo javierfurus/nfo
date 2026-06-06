@@ -11,7 +11,7 @@ import { removeWorktree, deleteBranch } from '../worktree.js';
 export interface DismissMusicianOptions {
   orchestraId: string;
   musicianId: string;
-  archiveWorktree?: boolean;     // default true
+  archiveWorktree?: boolean;     // default false
   summary?: string | null;
 }
 
@@ -25,7 +25,7 @@ export async function dismissMusician(opts: DismissMusicianOptions): Promise<voi
     ? opts.summary
     : (musician.status === 'idle' ? musician.latest_report?.summary ?? null : null);
 
-  const archive = opts.archiveWorktree !== false;
+  const archive = opts.archiveWorktree === true;
 
   // 1. Best-effort graceful shutdown of claude, then kill the window.
   const target = `${sessionName(opts.orchestraId)}:${musician.tmux_window_id}`;
