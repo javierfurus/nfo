@@ -1,6 +1,6 @@
 {
   "name": "nfo-cli",
-  "version": "0.0.3-a",
+  "version": "0.0.4-improve-prompting",
   "description": "No Fluff Orchestra — a simple, fluff-free CLI multi-agent orchestrator",
   "type": "module",
   "bin": {
