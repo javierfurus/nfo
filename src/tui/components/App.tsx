@@ -35,6 +35,7 @@ import {
 } from "../../tmux.js";
 import { openNotes } from "../../commands/notes.js";
 import { dismissMusician } from "../../musicians/dismiss.js";
+import { reconcileMusicianLiveness } from "../../musicians/reconcile.js";
 import { readState } from "../../state.js";
 import { notifyAwaitingPermission } from "../../notify.js";
 import type { Musician, OrchestraState } from "../../state.types.js";
@@ -108,10 +109,11 @@ export function App(props: AppProps): ReactElement {
     };
   }, [props.orchestraId]);
 
-  // Poll activity + clock every 2s.
+  // Poll activity + clock every 2s; also reconcile musician liveness each tick.
   useEffect(() => {
     const tick = async (): Promise<void> => {
       setNow(new Date().toISOString());
+      await reconcileMusicianLiveness(props.orchestraId);
       const s = await readState(props.orchestraId);
       if (s) {
         const a = await pollActivity(s);
@@ -433,7 +435,7 @@ export function App(props: AppProps): ReactElement {
       void openSelectedTarget(action.selectedIndex);
       return;
     }
-    if (action.kind === "quit") {
+    if (action.kind === "detach") {
       exit();
       return;
     }

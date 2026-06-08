@@ -27,7 +27,7 @@ describe('Help', () => {
     expect(frame).toContain('ctrl+g');
     expect(frame).toContain('ctrl+j');
     expect(frame).toContain('scroll');
-    expect(frame).toContain('kills');
+    expect(frame).toContain('detach');
   });
 
   it('shows a close hint', () => {

@@ -23,7 +23,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc src/cli.js --watch",
+    "dev": "tsx watch src/cli.ts",
     "pretest": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",

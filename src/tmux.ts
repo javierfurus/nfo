@@ -224,3 +224,31 @@ export async function selectWindow(name: string, windowTarget: string): Promise<
 export async function selectPane(target: string): Promise<void> {
   await execa('tmux', ['select-pane', '-t', target]);
 }
+
+export async function listLiveWindowIds(session: string): Promise<Set<string>> {
+  const result = await execa(
+    'tmux',
+    ['list-windows', '-t', session, '-F', '#{window_id} #{pane_dead}'],
+    { reject: false },
+  );
+  if (result.exitCode !== 0) {
+    return new Set();
+  }
+  const ids = new Set<string>();
+  for (const line of result.stdout.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const spaceIdx = trimmed.lastIndexOf(' ');
+    if (spaceIdx === -1) {
+      continue;
+    }
+    const windowId = trimmed.slice(0, spaceIdx);
+    const paneDead = trimmed.slice(spaceIdx + 1);
+    if (paneDead !== '1') {
+      ids.add(windowId);
+    }
+  }
+  return ids;
+}

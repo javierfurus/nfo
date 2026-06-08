@@ -1,7 +1,7 @@
 import { render } from "ink";
 import { App } from "../tui/components/App.js";
 import { readState } from "../state.js";
-import { killSession, sessionName, embeddedSessionName } from "../tmux.js";
+import { killSession, embeddedSessionName } from "../tmux.js";
 
 export interface RunTuiOptions {
   orchestraId: string;
@@ -22,7 +22,6 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
 
   async function teardown(): Promise<void> {
     await killSession(embeddedSessionName(opts.orchestraId));
-    await killSession(sessionName(opts.orchestraId));
   }
 
   const onSignal = (): void => {

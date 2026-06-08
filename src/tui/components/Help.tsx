@@ -21,7 +21,7 @@ const ROWS: Row[] = [
   {
     key: "q",
     label:
-      "quit NFO — kills the orchestrator and all musicians",
+      "detach — leaves orchestrator + musicians running; use `nfo kill` to stop",
   },
   {
     key: "Ctrl+g",

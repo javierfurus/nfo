@@ -4,6 +4,7 @@ import { restoreOrchestra } from './restore.js';
 import { readState } from '../state.js';
 import { migrateLegacySidebarPane } from './dashboard-window.js';
 import { runTui } from './tui.js';
+import { reconcileMusicianLiveness } from '../musicians/reconcile.js';
 
 export async function attachOrRestore(orchestraId: string, dryRun?: boolean, version = ''): Promise<LaunchResult> {
   const state = await readState(orchestraId);
@@ -13,6 +14,7 @@ export async function attachOrRestore(orchestraId: string, dryRun?: boolean, ver
   if (await sessionExists(name)) {
     await ensureNfoSessionUi(name);
     await migrateLegacySidebarPane(name);
+    await reconcileMusicianLiveness(orchestraId);
     if (!dryRun) {
       await runTui({ orchestraId, version });
     }

@@ -15,7 +15,7 @@ describe('StatusBar', () => {
     const frame = lastFrame() ?? '';
     expect(frame).toContain('nav');
     expect(frame).toContain('Ctrl+g');
-    expect(frame).toContain('[q] quit');
+    expect(frame).toContain('[q] detach');
   });
   it('shows the pending-permission banner when pendingCount > 0', () => {
     const { lastFrame } = render(<StatusBar permissionLevel="supervised" tokenHint="—" pendingCount={2} dismissConfirmation={null} orchestratorFocused={false} />);
