@@ -7,6 +7,7 @@ import { ConcertHall } from "./ConcertHall.js";
 import { Auditorium } from "./Auditorium.js";
 import { StatusBar } from "./StatusBar.js";
 import { Help } from "./Help.js";
+import { NoteReader } from "./NoteReader.js";
 import { SidebarHeader } from "./SidebarHeader.js";
 import { OrchestratorPane } from "./OrchestratorPane.js";
 
@@ -22,6 +23,12 @@ export interface AppViewProps {
   dismissConfirmation?: string | null;
   now: string;
   showHelp?: boolean;
+  showNoteReader?: boolean;
+  noteReaderMode?: "list" | "content";
+  noteFiles?: string[];
+  selectedNoteIndex?: number;
+  noteContent?: string;
+  noteScrollOffset?: number;
   orchestratorTitle: string;
   orchestratorLines: EmbeddedTerminalLine[];
   orchestratorFocused: boolean;
@@ -89,6 +96,36 @@ export function AppView(props: AppViewProps): ReactElement {
               backgroundColor="black"
             >
               <Help />
+            </Box>
+          </Box>
+        )}
+        {props.showNoteReader && (
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            width="100%"
+            height="100%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <Box
+              borderStyle="round"
+              paddingX={1}
+              paddingY={1}
+              width="80%"
+              height="80%"
+              flexDirection="column"
+              borderBackgroundColor={"black"}
+              backgroundColor="black"
+            >
+              <NoteReader
+                mode={props.noteReaderMode ?? "list"}
+                files={props.noteFiles ?? []}
+                selectedFileIndex={props.selectedNoteIndex ?? 0}
+                fileContent={props.noteContent ?? ""}
+                scrollOffset={props.noteScrollOffset ?? 0}
+              />
             </Box>
           </Box>
         )}

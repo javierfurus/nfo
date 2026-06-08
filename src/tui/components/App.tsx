@@ -33,7 +33,8 @@ import {
   selectWindow,
   sessionName,
 } from "../../tmux.js";
-import { openNotes } from "../../commands/notes.js";
+import { noteList, noteRead } from "../../notes.js";
+import { NOTE_READER_VISIBLE_LINES } from "./NoteReader.js";
 import { dismissMusician } from "../../musicians/dismiss.js";
 import { reconcileMusicianLiveness } from "../../musicians/reconcile.js";
 import { readState } from "../../state.js";
@@ -64,6 +65,12 @@ export function App(props: AppProps): ReactElement {
   );
   const [now, setNow] = useState(new Date().toISOString());
   const [showHelp, setShowHelp] = useState(false);
+  const [showNoteReader, setShowNoteReader] = useState(false);
+  const [noteFiles, setNoteFiles] = useState<string[]>([]);
+  const [noteReaderMode, setNoteReaderMode] = useState<"list" | "content">("list");
+  const [selectedNoteIndex, setSelectedNoteIndex] = useState(0);
+  const [noteContent, setNoteContent] = useState("");
+  const [noteScrollOffset, setNoteScrollOffset] = useState(0);
   const [orchestratorSnapshot, setOrchestratorSnapshot] =
     useState<EmbeddedTerminalSnapshot>({
       title: "Claude",
@@ -358,6 +365,46 @@ export function App(props: AppProps): ReactElement {
       return;
     }
 
+    if (showNoteReader) {
+      if (noteReaderMode === "list") {
+        if (key.upArrow || input === "k") {
+          setSelectedNoteIndex((prev) => {
+            return Math.max(0, prev - 1);
+          });
+        } else if (key.downArrow || input === "j") {
+          setSelectedNoteIndex((prev) => {
+            return Math.min(noteFiles.length - 1, prev + 1);
+          });
+        } else if (key.return) {
+          const filename = noteFiles[selectedNoteIndex];
+          if (filename) {
+            noteRead(props.orchestraId, filename).then((content) => {
+              setNoteContent(content);
+              setNoteScrollOffset(0);
+              setNoteReaderMode("content");
+            });
+          }
+        } else if (key.escape) {
+          setShowNoteReader(false);
+        }
+      } else {
+        const lines = noteContent.split("\n");
+        const maxOffset = Math.max(0, lines.length - NOTE_READER_VISIBLE_LINES);
+        if (key.upArrow || input === "k") {
+          setNoteScrollOffset((prev) => {
+            return Math.max(0, prev - 1);
+          });
+        } else if (key.downArrow || input === "j") {
+          setNoteScrollOffset((prev) => {
+            return Math.min(maxOffset, prev + 1);
+          });
+        } else if (key.escape) {
+          setNoteReaderMode("list");
+        }
+      }
+      return;
+    }
+
     const mouseScroll = toTerminalMouseScroll(input);
     if (mouseScroll) {
       const insideTerminalViewport =
@@ -440,7 +487,13 @@ export function App(props: AppProps): ReactElement {
       return;
     }
     if (action.kind === "open-notes") {
-      void openNotes(props.orchestraId);
+      noteList(props.orchestraId).then((files) => {
+        setNoteFiles(files);
+        setSelectedNoteIndex(0);
+        setNoteReaderMode("list");
+        setNoteScrollOffset(0);
+        setShowNoteReader(true);
+      });
       return;
     }
     if (action.kind === "dismiss-musician") {
@@ -515,6 +568,12 @@ export function App(props: AppProps): ReactElement {
       pendingCount={pendingCount}
       dismissConfirmation={dismissConfirmation}
       showHelp={showHelp}
+      showNoteReader={showNoteReader}
+      noteReaderMode={noteReaderMode}
+      noteFiles={noteFiles}
+      selectedNoteIndex={selectedNoteIndex}
+      noteContent={noteContent}
+      noteScrollOffset={noteScrollOffset}
       orchestratorTitle={paneTitle}
       orchestratorLines={orchestratorSnapshot.lines}
       orchestratorFocused={orchestratorFocused}
