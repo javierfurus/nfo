@@ -21,7 +21,7 @@ export type KeyAction =
   | { kind: 'next-orchestra' }
   | { kind: 'prev-orchestra' }
   | { kind: 'open-notes' }
-  | { kind: 'detach-session' }
+  | { kind: 'quit' }
   | { kind: 'jump-to-pending' }
   | { kind: 'toggle-help' };
 
@@ -92,7 +92,7 @@ export function reduceKey(ui: UiState, key: KeyInput): ReduceResult {
     return { ui, action: { kind: 'open-notes' } };
   }
   if (key.input === 'q') {
-    return { ui, action: { kind: 'detach-session' } };
+    return { ui, action: { kind: 'quit' } };
   }
   if (key.input === 'p') {
     return { ui, action: { kind: 'jump-to-pending' } };

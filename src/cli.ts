@@ -34,7 +34,7 @@ program
       await detectClaude();
       try {
         if (id) {
-          await attachOrRestore(id);
+          await attachOrRestore(id, undefined, packageJson.version);
           return;
         }
         const decision = await decideAction(process.cwd());
@@ -46,15 +46,16 @@ program
               orchestraId: decision.orchestraId,
               permissionLevel: level,
               notifyOnPermission: opts.notifyOnPermission,
+              version: packageJson.version,
             });
             return;
           }
           case "attach_existing":
-            await attachOrRestore(decision.orchestraId);
+            await attachOrRestore(decision.orchestraId, undefined, packageJson.version);
             return;
           case "pick": {
             const picked = await promptOrchestraPicker(decision.summaries);
-            await attachOrRestore(picked);
+            await attachOrRestore(picked, undefined, packageJson.version);
             return;
           }
           case "error":
@@ -85,7 +86,7 @@ program
   )
   .action(async (id: string, opts: { notifyOnPermission?: boolean }) => {
     const { restoreOrchestra } = await import("./commands/restore.js");
-    await restoreOrchestra(id, undefined, opts.notifyOnPermission);
+    await restoreOrchestra(id, undefined, opts.notifyOnPermission, packageJson.version);
   });
 
 program

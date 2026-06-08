@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useInput, useStdout, useWindowSize } from "ink";
+import { useApp, useInput, useStdout, useWindowSize } from "ink";
 import { AppView } from "./AppView.js";
 import { reduceKey } from "../keymap.js";
 import { pollActivity } from "../poll-activity.js";
@@ -27,7 +27,6 @@ import {
   toTerminalViewportCommand,
 } from "../terminal-input.js";
 import {
-  detachCurrentClient,
   embeddedSessionName,
   ensureEmbeddedSession,
   killSession,
@@ -52,6 +51,7 @@ function textLines(...lines: string[]): EmbeddedTerminalSnapshot["lines"] {
 }
 
 export function App(props: AppProps): ReactElement {
+  const { exit } = useApp();
   const windowSize = useWindowSize();
   const { stdout } = useStdout();
   const [state, setState] = useState<OrchestraState | null>(null);
@@ -433,17 +433,8 @@ export function App(props: AppProps): ReactElement {
       void openSelectedTarget(action.selectedIndex);
       return;
     }
-    if (action.kind === "detach-session") {
-      void detachCurrentClient().catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        setOrchestratorSnapshot({
-          title: "Claude",
-          lines: textLines(
-            `Unable to detach the current tmux client: ${message}`,
-          ),
-          connected: false,
-        });
-      });
+    if (action.kind === "quit") {
+      exit();
       return;
     }
     if (action.kind === "open-notes") {

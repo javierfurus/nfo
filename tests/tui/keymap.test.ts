@@ -39,9 +39,9 @@ describe('reduceKey', () => {
     expect(reduceKey(ui(), key({ tab: true })).action).toEqual({ kind: 'next-orchestra' });
     expect(reduceKey(ui(), key({ shiftTab: true })).action).toEqual({ kind: 'prev-orchestra' });
   });
-  it('n emits open-notes and q emits detach-session', () => {
+  it('n emits open-notes and q emits quit', () => {
     expect(reduceKey(ui(), key({ input: 'n' })).action).toEqual({ kind: 'open-notes' });
-    expect(reduceKey(ui(), key({ input: 'q' })).action).toEqual({ kind: 'detach-session' });
+    expect(reduceKey(ui(), key({ input: 'q' })).action).toEqual({ kind: 'quit' });
   });
   it('d on the orchestrator row is a no-op', () => {
     const r = reduceKey(ui({ selectedIndex: 0 }), key({ input: 'd' }));
