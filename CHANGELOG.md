@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.6](https://github.com/javierfurus/nfo/compare/nfo-cli-v0.0.5...nfo-cli-v0.0.6) (2026-06-09)
+
+
+### Features
+
+* **notes:** replace editor ([#11](https://github.com/javierfurus/nfo/issues/11)) ([28bacb9](https://github.com/javierfurus/nfo/commit/28bacb9ac0e989322930fd2dbae46260a5ca93f3))
+
+
+### Bug Fixes
+
+* unwrap from tmux ([bcbc6e3](https://github.com/javierfurus/nfo/commit/bcbc6e393c5a01a5892d2d87131da4b082c71019)), closes [#1](https://github.com/javierfurus/nfo/issues/1)
+
 ## [0.0.5](https://github.com/javierfurus/nfo/compare/nfo-cli-v0.0.4...nfo-cli-v0.0.5) (2026-06-06)
 
 
