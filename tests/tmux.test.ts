@@ -12,6 +12,7 @@ import {
   selectPane,
   setPaneOption,
   ensureNfoSessionUi,
+  listLiveWindowIds,
 } from '../src/tmux.js';
 
 describe('tmux wrapper', () => {
@@ -98,6 +99,35 @@ describe('tmux wrapper', () => {
       'display-message', '-p', '-t', name, '#{pane_index}',
     ]);
     expect(active.trim()).toBe('0');
+  });
+
+  it('listLiveWindowIds returns an empty Set for a non-existent session', async () => {
+    const live = await listLiveWindowIds('nfo-does-not-exist-zzz');
+    expect(live).toEqual(new Set());
+  });
+
+  it('listLiveWindowIds includes live windows and excludes windows with dead panes', async () => {
+    const { execa: _execa } = await import('execa');
+    const name = `nfo-test-livewin-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+
+    // Get the ID of the initial window (live shell).
+    const { stdout: liveIdRaw } = await _execa('tmux', ['display-message', '-p', '-t', name, '#{window_id}']);
+    const liveId = liveIdRaw.trim();
+
+    // Create a second window, set remain-on-exit, then run a command that exits immediately.
+    const { stdout: deadIdRaw } = await _execa('tmux', [
+      'new-window', '-t', name, '-n', 'will-die', '-c', '/tmp', '-d', '-P', '-F', '#{window_id}',
+    ]);
+    const deadId = deadIdRaw.trim();
+    await setPaneOption(`${name}:${deadId}`, 'remain-on-exit', 'on');
+    await respawnPane(`${name}:${deadId}`, 'exit 0');
+    await new Promise((r) => { setTimeout(r, 400); });
+
+    const live = await listLiveWindowIds(name);
+    expect(live.has(liveId)).toBe(true);
+    expect(live.has(deadId)).toBe(false);
   });
 
   it('ensureNfoSessionUi enables extkeys for modified enter passthrough', async () => {

@@ -12,8 +12,6 @@ import {
   sessionName,
   sessionExists,
   createDetachedSession,
-  attachSession,
-  selectWindow,
   ensureNfoSessionUi,
   respawnPane,
   setPaneOption,
@@ -23,10 +21,9 @@ import { orchestraDir } from '../config.js';
 import { listOrchestras } from './list.js';
 import type { OrchestraSummary } from './list.js';
 import { noteRead, noteList } from '../notes.js';
-import { DASHBOARD_WINDOW_NAME } from '../dashboard.js';
-import { ensureDashboardWindow } from './dashboard-window.js';
 import { buildClaudeCommand } from '../claude-command.js';
 import { writeOrchestratorMcpConfig } from '../mcp/config.js';
+import { runTui } from './tui.js';
 
 export interface LaunchOptions {
   cwd: string;
@@ -76,6 +73,7 @@ export interface CreateOrchestraOptions {
   permissionLevel: PermissionLevel;
   dryRun?: boolean;
   notifyOnPermission?: boolean;
+  version?: string;
 }
 
 export async function createOrchestra(opts: CreateOrchestraOptions): Promise<LaunchResult> {
@@ -99,8 +97,6 @@ export async function createOrchestra(opts: CreateOrchestraOptions): Promise<Lau
   await ensureNfoSessionUi(name);
   await setPaneOption(`${name}:0`, 'remain-on-exit', 'on');
 
-  await ensureDashboardWindow(name, opts.repoRoot, opts.orchestraId);
-
   const claudeFlags = claudeFlagsForLevel(opts.permissionLevel);
   const claudeCmd = buildClaudeCommand({
     flags: claudeFlags,
@@ -110,8 +106,7 @@ export async function createOrchestra(opts: CreateOrchestraOptions): Promise<Lau
   await respawnPane(`${name}:0`, claudeCmd);
 
   if (!opts.dryRun) {
-    await selectWindow(name, DASHBOARD_WINDOW_NAME);
-    await attachSession(name);
+    await runTui({ orchestraId: opts.orchestraId, version: opts.version ?? '' });
   }
   return { action: 'created', orchestraId: opts.orchestraId };
 }

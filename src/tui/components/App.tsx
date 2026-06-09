@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useInput, useStdout, useWindowSize } from "ink";
+import { useApp, useInput, useStdout, useWindowSize } from "ink";
 import { AppView } from "./AppView.js";
 import { reduceKey } from "../keymap.js";
 import { pollActivity } from "../poll-activity.js";
@@ -27,7 +27,6 @@ import {
   toTerminalViewportCommand,
 } from "../terminal-input.js";
 import {
-  detachCurrentClient,
   embeddedSessionName,
   ensureEmbeddedSession,
   killSession,
@@ -36,6 +35,7 @@ import {
 } from "../../tmux.js";
 import { openNotes } from "../../commands/notes.js";
 import { dismissMusician } from "../../musicians/dismiss.js";
+import { reconcileMusicianLiveness } from "../../musicians/reconcile.js";
 import { readState } from "../../state.js";
 import { notifyAwaitingPermission } from "../../notify.js";
 import type { Musician, OrchestraState } from "../../state.types.js";
@@ -52,6 +52,7 @@ function textLines(...lines: string[]): EmbeddedTerminalSnapshot["lines"] {
 }
 
 export function App(props: AppProps): ReactElement {
+  const { exit } = useApp();
   const windowSize = useWindowSize();
   const { stdout } = useStdout();
   const [state, setState] = useState<OrchestraState | null>(null);
@@ -108,10 +109,11 @@ export function App(props: AppProps): ReactElement {
     };
   }, [props.orchestraId]);
 
-  // Poll activity + clock every 2s.
+  // Poll activity + clock every 2s; also reconcile musician liveness each tick.
   useEffect(() => {
     const tick = async (): Promise<void> => {
       setNow(new Date().toISOString());
+      await reconcileMusicianLiveness(props.orchestraId);
       const s = await readState(props.orchestraId);
       if (s) {
         const a = await pollActivity(s);
@@ -433,17 +435,8 @@ export function App(props: AppProps): ReactElement {
       void openSelectedTarget(action.selectedIndex);
       return;
     }
-    if (action.kind === "detach-session") {
-      void detachCurrentClient().catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        setOrchestratorSnapshot({
-          title: "Claude",
-          lines: textLines(
-            `Unable to detach the current tmux client: ${message}`,
-          ),
-          connected: false,
-        });
-      });
+    if (action.kind === "detach") {
+      exit();
       return;
     }
     if (action.kind === "open-notes") {

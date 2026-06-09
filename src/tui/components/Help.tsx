@@ -21,7 +21,7 @@ const ROWS: Row[] = [
   {
     key: "q",
     label:
-      "detach this tmux client from NFO without killing the orchestra session",
+      "detach — leaves orchestrator + musicians running; use `nfo kill` to stop",
   },
   {
     key: "Ctrl+g",

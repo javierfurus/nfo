@@ -52,9 +52,5 @@ describe('attachOrRestore', () => {
     ]);
     expect(paneCount.trim().split('\n').length).toBe(1);
 
-    const { stdout: windows } = await execa('tmux', [
-      'list-windows', '-t', name, '-F', '#{window_name}',
-    ]);
-    expect(windows).toContain('nfo-dashboard');
   });
 });

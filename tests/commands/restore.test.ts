@@ -65,10 +65,6 @@ describe('restoreOrchestra', () => {
       'list-panes', '-t', `${sessionName(orchestraId)}:0`, '-F', '#{pane_index}',
     ]);
     expect(paneCount.trim().split('\n').length).toBe(1);
-    const { stdout: windows } = await execa('tmux', [
-      'list-windows', '-t', sessionName(orchestraId), '-F', '#{window_name}',
-    ]);
-    expect(windows).toContain('nfo-dashboard');
   });
 
   it('recreates windows for non-stopped musicians and updates their window id', async () => {

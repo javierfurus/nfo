@@ -9,9 +9,7 @@ import {
   sessionName,
   sessionExists,
   createDetachedSession,
-  attachSession,
   ensureNfoSessionUi,
-  selectWindow,
   respawnPane,
   setPaneOption,
 } from "../tmux.js";
@@ -20,11 +18,8 @@ import { ORCHESTRATOR_ROLE_PROMPT_V1 } from "../prompts/orchestrator-role.js";
 import { MUSICIAN_ROLE_PROMPT_V1 } from "../prompts/musician-role.js";
 import { loadOrchestratorNotes } from "./launch.js";
 import type { LaunchResult } from "./launch.js";
-import { DASHBOARD_WINDOW_NAME } from "../dashboard.js";
-import {
-  ensureDashboardWindow,
-  migrateLegacySidebarPane,
-} from "./dashboard-window.js";
+import { migrateLegacySidebarPane } from "./dashboard-window.js";
+import { runTui } from "./tui.js";
 import { buildClaudeCommand } from "../claude-command.js";
 import {
   orchestratorMcpConfigPath,
@@ -49,6 +44,7 @@ export async function restoreOrchestra(
   orchestraId: string,
   dryRun?: boolean,
   notifyOnPermission?: boolean,
+  version = '',
 ): Promise<LaunchResult> {
   const state = await readState(orchestraId);
   if (!state) {
@@ -63,18 +59,15 @@ export async function restoreOrchestra(
   const name = sessionName(orchestraId);
   if (await sessionExists(name)) {
     await ensureNfoSessionUi(name);
-    await ensureDashboardWindow(name, state.project_path, orchestraId);
     await migrateLegacySidebarPane(name);
     if (!dryRun) {
-      await selectWindow(name, DASHBOARD_WINDOW_NAME);
-      await attachSession(name);
+      await runTui({ orchestraId, version });
     }
     return { action: "attached", orchestraId };
   }
 
   await createDetachedSession(name, state.project_path);
   await ensureNfoSessionUi(name);
-  await ensureDashboardWindow(name, state.project_path, orchestraId);
   await setPaneOption(`${name}:0`, "remain-on-exit", "on");
 
   const mcpConfigPath = existsSync(orchestratorMcpConfigPath(orchestraId))
@@ -146,8 +139,7 @@ export async function restoreOrchestra(
   }
 
   if (!dryRun) {
-    await selectWindow(name, DASHBOARD_WINDOW_NAME);
-    await attachSession(name);
+    await runTui({ orchestraId, version });
   }
   return { action: "restored", orchestraId };
 }

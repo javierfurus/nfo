@@ -63,10 +63,6 @@ describe('launch in a repo with no prior orchestra', () => {
       'list-panes', '-t', `${sessionName(result.orchestraId)}:0`, '-F', '#{pane_index}',
     ]);
     expect(paneCount.trim().split('\n').length).toBe(1);
-    const { stdout: windows } = await execa('tmux', [
-      'list-windows', '-t', sessionName(result.orchestraId), '-F', '#{window_name}',
-    ]);
-    expect(windows).toContain('nfo-dashboard');
     const { stdout: status } = await execa('tmux', [
       'show-options', '-t', sessionName(result.orchestraId), 'status',
     ]);
