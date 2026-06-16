@@ -102,6 +102,7 @@ export async function createOrchestra(opts: CreateOrchestraOptions): Promise<Lau
     flags: claudeFlags,
     mcpConfigPath,
     promptFile,
+    claudeConfigDir: process.env.CLAUDE_CONFIG_DIR,
   });
   await respawnPane(`${name}:0`, claudeCmd);
 

@@ -10,6 +10,7 @@ import { Help } from "./Help.js";
 import { NoteReader } from "./NoteReader.js";
 import { SidebarHeader } from "./SidebarHeader.js";
 import { OrchestratorPane } from "./OrchestratorPane.js";
+import { LazyGitDialog } from "./LazyGitDialog.js";
 
 export interface AppViewProps {
   orchestras: OrchestraSummary[];
@@ -36,6 +37,10 @@ export interface AppViewProps {
   activeMusicianId?: string | null;
   orchestratorActive?: boolean;
   version: string;
+  lazygitInstalled?: boolean;
+  showLazyGit?: boolean;
+  lazyGitFocused?: boolean;
+  lazyGitLines?: EmbeddedTerminalLine[];
 }
 
 export function AppView(props: AppViewProps): ReactElement {
@@ -74,6 +79,7 @@ export function AppView(props: AppViewProps): ReactElement {
             pendingCount={pendingCount}
             dismissConfirmation={props.dismissConfirmation}
             orchestratorFocused={props.orchestratorFocused}
+            lazygitInstalled={props.lazygitInstalled ?? false}
           />
         </Box>
         {props.showHelp && (
@@ -125,6 +131,33 @@ export function AppView(props: AppViewProps): ReactElement {
                 selectedFileIndex={props.selectedNoteIndex ?? 0}
                 fileContent={props.noteContent ?? ""}
                 scrollOffset={props.noteScrollOffset ?? 0}
+              />
+            </Box>
+          </Box>
+        )}
+        {props.showLazyGit && (
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            width="100%"
+            height="100%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <Box
+              borderStyle="round"
+              paddingX={1}
+              paddingY={1}
+              width="90%"
+              height="90%"
+              flexDirection="column"
+              borderBackgroundColor={"black"}
+              backgroundColor="black"
+            >
+              <LazyGitDialog
+                lines={props.lazyGitLines ?? []}
+                focused={props.lazyGitFocused ?? false}
               />
             </Box>
           </Box>

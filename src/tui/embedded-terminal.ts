@@ -32,6 +32,8 @@ export interface EmbeddedTerminalOptions {
   cwd: string;
   cols: number;
   rows: number;
+  command?: string;
+  commandArgs?: string[];
 }
 
 type Listener = (snapshot: EmbeddedTerminalSnapshot) => void;
@@ -197,12 +199,16 @@ function buildLineSnapshot(
   };
 }
 
-export function buildSnapshot(terminal: XTermTerminal, title: string, connected: boolean): EmbeddedTerminalSnapshot {
+export function buildSnapshot(terminal: XTermTerminal, title: string, connected: boolean, cursorHidden = false): EmbeddedTerminalSnapshot {
   const buffer = terminal.buffer.active;
   const blankCell = buffer.getNullCell();
-  const cursorRow = (buffer.baseY + buffer.cursorY) - buffer.viewportY;
-  const visibleCursorRow = cursorRow >= 0 && cursorRow < terminal.rows ? cursorRow : null;
-  const visibleCursorColumn = visibleCursorRow !== null ? Math.min(buffer.cursorX, terminal.cols) : null;
+  let visibleCursorRow: number | null = null;
+  let visibleCursorColumn: number | null = null;
+  if (!cursorHidden) {
+    const cursorRow = (buffer.baseY + buffer.cursorY) - buffer.viewportY;
+    visibleCursorRow = cursorRow >= 0 && cursorRow < terminal.rows ? cursorRow : null;
+    visibleCursorColumn = visibleCursorRow !== null ? Math.min(buffer.cursorX, terminal.cols) : null;
+  }
   const lines: EmbeddedTerminalLine[] = [];
   for (let row = 0; row < terminal.rows; row += 1) {
     const line = buffer.getLine(buffer.viewportY + row);
@@ -228,6 +234,7 @@ export class EmbeddedTerminal {
   private readonly disposables: Disposable[] = [];
   private title = 'Claude';
   private connected = true;
+  private cursorHidden = false;
 
   public constructor(options: EmbeddedTerminalOptions) {
     this.terminal = new Terminal({
@@ -236,7 +243,26 @@ export class EmbeddedTerminal {
       rows: options.rows,
       scrollback: 5000,
     });
-    this.pty = spawn('tmux', ['attach-session', '-t', options.sessionName], {
+
+    // Track DECTCEM cursor visibility (CSI ?25h = show, CSI ?25l = hide)
+    this.disposables.push(
+      this.terminal.parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
+        if (params.includes(25)) {
+          this.cursorHidden = false;
+        }
+        return false;
+      }),
+      this.terminal.parser.registerCsiHandler({ prefix: '?', final: 'l' }, (params) => {
+        if (params.includes(25)) {
+          this.cursorHidden = true;
+        }
+        return false;
+      }),
+    );
+
+    const cmd = options.command ?? 'tmux';
+    const cmdArgs = options.commandArgs ?? ['attach-session', '-t', options.sessionName];
+    this.pty = spawn(cmd, cmdArgs, {
       name: 'xterm-256color',
       cols: options.cols,
       rows: options.rows,
@@ -273,7 +299,7 @@ export class EmbeddedTerminal {
   }
 
   public snapshot(): EmbeddedTerminalSnapshot {
-    return buildSnapshot(this.terminal, this.title, this.connected);
+    return buildSnapshot(this.terminal, this.title, this.connected, this.cursorHidden);
   }
 
   public resize(cols: number, rows: number): void {

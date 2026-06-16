@@ -98,6 +98,7 @@ export async function createMusician(
       prompt: buildMusicianInitialPrompt(opts.task),
       model: opts.model,
       allowedTools: opts.allowedTools,
+      claudeConfigDir: process.env.CLAUDE_CONFIG_DIR,
     });
     const { stdout } = await execa("tmux", [
       "new-window",

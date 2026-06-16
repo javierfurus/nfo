@@ -58,6 +58,27 @@ describe('buildClaudeCommand', () => {
     expect(command).toContain("'--allowedTools' 'mcp__nfo'");
   });
 
+  it('prepends CLAUDE_CONFIG_DIR when claudeConfigDir is provided', () => {
+    const command = buildClaudeCommand({
+      flags: [],
+      mcpConfigPath: '/tmp/mcp-config.json',
+      claudeConfigDir: '/home/user/.claude-sc',
+    });
+
+    expect(command).toMatch(/^CLAUDE_CONFIG_DIR='\/home\/user\/\.claude-sc' /);
+    expect(command).toContain("'claude'");
+  });
+
+  it('omits CLAUDE_CONFIG_DIR prefix when claudeConfigDir is absent', () => {
+    const command = buildClaudeCommand({
+      flags: [],
+      mcpConfigPath: '/tmp/mcp-config.json',
+    });
+
+    expect(command).not.toContain('CLAUDE_CONFIG_DIR');
+    expect(command).toMatch(/^'claude'/);
+  });
+
   it('omits --tools when allowedTools is an empty array', () => {
     const command = buildClaudeCommand({
       flags: [],

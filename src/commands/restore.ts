@@ -89,6 +89,7 @@ export async function restoreOrchestra(
       resumeSessionId: state.orchestrator_session_id,
       mcpConfigPath,
       promptFile: existsSync(promptFile) ? promptFile : undefined,
+      claudeConfigDir: process.env.CLAUDE_CONFIG_DIR,
     }),
   );
 
@@ -134,6 +135,7 @@ export async function restoreOrchestra(
         mcpConfigPath: musicianMcpConfigPath,
         promptFile: musicianPromptFile,
         model: musician.model ?? "sonnet",
+        claudeConfigDir: process.env.CLAUDE_CONFIG_DIR,
       }),
     );
   }
