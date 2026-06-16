@@ -7,6 +7,7 @@ export interface StatusBarProps {
   pendingCount: number;
   dismissConfirmation?: string | null;
   orchestratorFocused: boolean;
+  lazygitInstalled?: boolean;
 }
 
 export function StatusBar(props: StatusBarProps): ReactElement {
@@ -32,7 +33,7 @@ export function StatusBar(props: StatusBarProps): ReactElement {
         <Text dimColor={true}>[type] active terminal [Ctrl+g] sidebar</Text>
       ) : (
         <Text dimColor={true}>
-          [↑↓] nav [⏎] open left pane [d] dismiss [p] pending [n] notes [Ctrl+g]
+          [↑↓] nav [⏎] open left pane [d] dismiss [p] pending [n] notes{props.lazygitInstalled === true ? " [g] lazygit" : ""} [Ctrl+g]
           terminal
         </Text>
       )}

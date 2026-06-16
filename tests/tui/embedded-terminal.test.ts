@@ -20,7 +20,7 @@ describe('buildSnapshot', () => {
       rows: 1,
     });
 
-    await write(terminal, '\u001b[31mred\u001b[39m plain \u001b[38;2;1;2;3m\u001b[48;5;4m\u001b[1;3;4;9mrgb\u001b[0m');
+    await write(terminal, '[31mred[39m plain [38;2;1;2;3m[48;5;4m[1;3;4;9mrgb[0m');
 
     const snapshot = buildSnapshot(terminal, 'Claude', true);
 
@@ -65,7 +65,7 @@ describe('buildSnapshot', () => {
       rows: 1,
     });
 
-    await write(terminal, 'hello\u001b[2D');
+    await write(terminal, 'hello[2D');
 
     const snapshot = buildSnapshot(terminal, 'Claude', true);
 
@@ -76,5 +76,61 @@ describe('buildSnapshot', () => {
         { text: 'o' },
       ],
     });
+  });
+
+  it('emits a cursor span by default (cursorHidden=false)', async () => {
+    const terminal = new Terminal({
+      allowProposedApi: true,
+      cols: 10,
+      rows: 1,
+    });
+
+    await write(terminal, 'hello');
+
+    const snapshot = buildSnapshot(terminal, 'Claude', true);
+
+    const hasCursor = snapshot.lines.some((line) =>
+      line.spans.some((span) => span.cursor === true),
+    );
+    expect(hasCursor).toBe(true);
+  });
+
+  it('suppresses all cursor spans when cursorHidden=true (DECTCEM ?25l)', async () => {
+    const terminal = new Terminal({
+      allowProposedApi: true,
+      cols: 10,
+      rows: 1,
+    });
+
+    await write(terminal, 'hello[?25l');
+
+    const snapshot = buildSnapshot(terminal, 'Claude', true, true);
+
+    const hasCursor = snapshot.lines.some((line) =>
+      line.spans.some((span) => span.cursor === true),
+    );
+    expect(hasCursor).toBe(false);
+  });
+
+  it('restores cursor spans when cursorHidden=false after hide (DECTCEM ?25h)', async () => {
+    const terminal = new Terminal({
+      allowProposedApi: true,
+      cols: 10,
+      rows: 1,
+    });
+
+    await write(terminal, 'hello[?25l');
+    const hiddenSnapshot = buildSnapshot(terminal, 'Claude', true, true);
+    const hiddenHasCursor = hiddenSnapshot.lines.some((line) =>
+      line.spans.some((span) => span.cursor === true),
+    );
+    expect(hiddenHasCursor).toBe(false);
+
+    await write(terminal, '[?25h');
+    const shownSnapshot = buildSnapshot(terminal, 'Claude', true, false);
+    const shownHasCursor = shownSnapshot.lines.some((line) =>
+      line.spans.some((span) => span.cursor === true),
+    );
+    expect(shownHasCursor).toBe(true);
   });
 });

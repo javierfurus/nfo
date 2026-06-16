@@ -9,6 +9,7 @@ export interface BuildClaudeCommandOptions {
   prompt?: string;
   model?: SubagentModel;
   allowedTools?: string[];
+  claudeConfigDir?: string;
 }
 
 const NFO_MCP_ALLOW = "mcp__nfo";
@@ -40,5 +41,9 @@ export function buildClaudeCommand(opts: BuildClaudeCommandOptions): string {
     args.push("--", opts.prompt);
   }
 
-  return args.map(shellQuote).join(" ");
+  const cmd = args.map(shellQuote).join(" ");
+  if (opts.claudeConfigDir) {
+    return `CLAUDE_CONFIG_DIR=${shellQuote(opts.claudeConfigDir)} ${cmd}`;
+  }
+  return cmd;
 }

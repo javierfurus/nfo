@@ -33,6 +33,7 @@ import {
   selectWindow,
   sessionName,
 } from "../../tmux.js";
+import { execa } from "execa";
 import { noteList, noteRead } from "../../notes.js";
 import { NOTE_READER_VISIBLE_LINES } from "./NoteReader.js";
 import { dismissMusician } from "../../musicians/dismiss.js";
@@ -81,8 +82,37 @@ export function App(props: AppProps): ReactElement {
     string | null
   >(null);
   const [orchestratorFocused, setOrchestratorFocused] = useState(false);
+  const [lazygitInstalled, setLazygitInstalled] = useState(false);
+  const [showLazyGit, setShowLazyGit] = useState(false);
+  const [lazyGitFocused, setLazyGitFocused] = useState(false);
+  const [lazyGitSnapshot, setLazyGitSnapshot] = useState<EmbeddedTerminalSnapshot>({
+    title: "lazygit",
+    lines: [],
+    connected: true,
+  });
   const terminalRef = useRef<EmbeddedTerminal | null>(null);
+  const lazyGitTerminalRef = useRef<EmbeddedTerminal | null>(null);
+  const lazyGitUnsubscribeRef = useRef<(() => void) | null>(null);
   const idleTrackerRef = useRef<MusicianIdleTracker>({});
+
+  // Detect whether lazygit is installed.
+  useEffect(() => {
+    execa('lazygit', ['--version'], { reject: false }).then((result) => {
+      setLazygitInstalled(result.exitCode === 0);
+    }).catch(() => {
+      // lazygit not available
+    });
+  }, []);
+
+  // Clean up lazygit terminal on unmount.
+  useEffect(() => {
+    return () => {
+      lazyGitUnsubscribeRef.current?.();
+      lazyGitUnsubscribeRef.current = null;
+      lazyGitTerminalRef.current?.dispose();
+      lazyGitTerminalRef.current = null;
+    };
+  }, []);
 
   // Watch state.json.
   useEffect(() => {
@@ -405,6 +435,34 @@ export function App(props: AppProps): ReactElement {
       return;
     }
 
+    if (lazyGitFocused) {
+      if (key.escape) {
+        setShowLazyGit(false);
+        setLazyGitFocused(false);
+        lazyGitUnsubscribeRef.current?.();
+        lazyGitUnsubscribeRef.current = null;
+        lazyGitTerminalRef.current?.dispose();
+        lazyGitTerminalRef.current = null;
+        return;
+      }
+      const lazyGitMouseScroll = toTerminalMouseScroll(input);
+      if (lazyGitMouseScroll) {
+        const dialogLeft = Math.floor(windowSize.columns * 0.05);
+        const dialogTop = Math.floor(windowSize.rows * 0.05);
+        const translatedCol = Math.max(1, lazyGitMouseScroll.column - dialogLeft);
+        const translatedRow = Math.max(1, lazyGitMouseScroll.row - dialogTop);
+        lazyGitTerminalRef.current?.write(
+          `\u001b[<${lazyGitMouseScroll.button};${translatedCol};${translatedRow}M`,
+        );
+        return;
+      }
+      const terminalInput = toTerminalInput(input, key);
+      if (terminalInput) {
+        lazyGitTerminalRef.current?.write(terminalInput);
+      }
+      return;
+    }
+
     const mouseScroll = toTerminalMouseScroll(input);
     if (mouseScroll) {
       const insideTerminalViewport =
@@ -496,6 +554,37 @@ export function App(props: AppProps): ReactElement {
       });
       return;
     }
+    if (action.kind === "open-lazygit") {
+      if (!lazygitInstalled || !projectPath || showLazyGit) {
+        return;
+      }
+      const lazyGitCols = Math.max(40, Math.floor(windowSize.columns * 0.90) - 4);
+      const lazyGitRows = Math.max(12, Math.floor(windowSize.rows * 0.90) - 4);
+      const lazyGitTerminal = new EmbeddedTerminal({
+        sessionName: "",
+        cwd: projectPath,
+        cols: lazyGitCols,
+        rows: lazyGitRows,
+        command: "lazygit",
+        commandArgs: [],
+      });
+      lazyGitTerminalRef.current = lazyGitTerminal;
+      const unsubscribe = lazyGitTerminal.onChange((snapshot) => {
+        setLazyGitSnapshot(snapshot);
+        if (!snapshot.connected) {
+          setShowLazyGit(false);
+          setLazyGitFocused(false);
+          lazyGitUnsubscribeRef.current?.();
+          lazyGitUnsubscribeRef.current = null;
+          lazyGitTerminalRef.current?.dispose();
+          lazyGitTerminalRef.current = null;
+        }
+      });
+      lazyGitUnsubscribeRef.current = unsubscribe;
+      setShowLazyGit(true);
+      setLazyGitFocused(true);
+      return;
+    }
     if (action.kind === "dismiss-musician") {
       const m = musicians[action.index];
       if (m) {
@@ -581,6 +670,10 @@ export function App(props: AppProps): ReactElement {
       activeMusicianId={activePaneMusician?.id ?? null}
       orchestratorActive={activePaneMusician === null}
       version={props.version}
+      lazygitInstalled={lazygitInstalled}
+      showLazyGit={showLazyGit}
+      lazyGitFocused={lazyGitFocused}
+      lazyGitLines={lazyGitSnapshot.lines}
     />
   );
 }

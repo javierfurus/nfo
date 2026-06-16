@@ -11,6 +11,7 @@ const ROWS: Row[] = [
   { key: "↓ / j", label: "move selection down" },
   { key: "Enter", label: "open the selected target in the left pane" },
   { key: "n", label: "open notes for this orchestra" },
+  { key: "g", label: "open lazygit (if installed)" },
   {
     key: "d",
     label:

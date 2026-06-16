@@ -21,6 +21,7 @@ export type KeyAction =
   | { kind: 'next-orchestra' }
   | { kind: 'prev-orchestra' }
   | { kind: 'open-notes' }
+  | { kind: 'open-lazygit' }
   | { kind: 'detach' }
   | { kind: 'jump-to-pending' }
   | { kind: 'toggle-help' };
@@ -90,6 +91,9 @@ export function reduceKey(ui: UiState, key: KeyInput): ReduceResult {
   }
   if (key.input === 'n') {
     return { ui, action: { kind: 'open-notes' } };
+  }
+  if (key.input === 'g') {
+    return { ui, action: { kind: 'open-lazygit' } };
   }
   if (key.input === 'q') {
     return { ui, action: { kind: 'detach' } };
