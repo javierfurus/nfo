@@ -17,6 +17,7 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
     <App orchestraId={opts.orchestraId} version={opts.version} />,
     {
       exitOnCtrlC: false,
+      alternateScreen: true,
     },
   );
 

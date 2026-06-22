@@ -1,8 +1,8 @@
-import type { ReactElement } from "react";
-import { Box } from "ink";
+import type { ReactElement, RefObject } from "react";
+import { Box, type DOMElement } from "ink";
 import type { Musician } from "../../state.types.js";
 import type { OrchestraSummary } from "../../commands/list.js";
-import type { EmbeddedTerminalLine } from "../embedded-terminal.js";
+import type { TerminalFeed } from "../embedded-terminal.js";
 import { ConcertHall } from "./ConcertHall.js";
 import { Auditorium } from "./Auditorium.js";
 import { StatusBar } from "./StatusBar.js";
@@ -20,6 +20,7 @@ export interface AppViewProps {
   selectedIndex: number;
   permissionLevel: string;
   tokenHint: string;
+  rows: number;
   pendingCount?: number;
   dismissConfirmation?: string | null;
   now: string;
@@ -30,29 +31,31 @@ export interface AppViewProps {
   selectedNoteIndex?: number;
   noteContent?: string;
   noteScrollOffset?: number;
-  orchestratorTitle: string;
-  orchestratorLines: EmbeddedTerminalLine[];
+  feed: TerminalFeed | null;
+  activeMusicianName: string | null;
+  errorMessage: string | null;
   orchestratorFocused: boolean;
-  orchestratorConnected: boolean;
   activeMusicianId?: string | null;
   orchestratorActive?: boolean;
   version: string;
   lazygitInstalled?: boolean;
-  showLazyGit?: boolean;
+  lazyGitFeed?: TerminalFeed | null;
   lazyGitFocused?: boolean;
-  lazyGitLines?: EmbeddedTerminalLine[];
+  orchestratorPaneRef?: RefObject<DOMElement | null>;
+  lazyGitBoxRef?: RefObject<DOMElement | null>;
 }
 
 export function AppView(props: AppViewProps): ReactElement {
   const pendingCount = props.pendingCount ?? 0;
   return (
-    <Box width="100%" height="100%">
+    <Box width="100%" height={props.rows}>
       <Box flexDirection="row" width="100%" height="100%">
         <OrchestratorPane
-          title={props.orchestratorTitle}
-          lines={props.orchestratorLines}
+          feed={props.feed}
+          activeMusicianName={props.activeMusicianName}
+          errorMessage={props.errorMessage}
           focused={props.orchestratorFocused}
-          connected={props.orchestratorConnected}
+          boxRef={props.orchestratorPaneRef}
         />
         <Box width={48} flexDirection="column">
           <SidebarHeader
@@ -135,7 +138,7 @@ export function AppView(props: AppViewProps): ReactElement {
             </Box>
           </Box>
         )}
-        {props.showLazyGit && (
+        {props.lazyGitFeed != null && (
           <Box
             position="absolute"
             top={0}
@@ -146,6 +149,7 @@ export function AppView(props: AppViewProps): ReactElement {
             alignItems="center"
           >
             <Box
+              ref={props.lazyGitBoxRef}
               borderStyle="round"
               paddingX={1}
               paddingY={1}
@@ -156,7 +160,7 @@ export function AppView(props: AppViewProps): ReactElement {
               backgroundColor="black"
             >
               <LazyGitDialog
-                lines={props.lazyGitLines ?? []}
+                feed={props.lazyGitFeed}
                 focused={props.lazyGitFocused ?? false}
               />
             </Box>

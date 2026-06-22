@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useApp, useInput, useStdout, useWindowSize } from "ink";
+import { useApp, useBoxMetrics, useInput, useStdout, useWindowSize, type DOMElement } from "ink";
 import { AppView } from "./AppView.js";
 import { reduceKey } from "../keymap.js";
 import { pollActivity } from "../poll-activity.js";
@@ -14,7 +14,7 @@ import { watchOrchestraState, type StopWatching } from "../watch-state.js";
 import { listOrchestras, type OrchestraSummary } from "../../commands/list.js";
 import {
   EmbeddedTerminal,
-  type EmbeddedTerminalSnapshot,
+  type TerminalFeed,
 } from "../embedded-terminal.js";
 import {
   claimEmbeddedSessionLease,
@@ -47,12 +47,6 @@ export interface AppProps {
   version: string;
 }
 
-function textLines(...lines: string[]): EmbeddedTerminalSnapshot["lines"] {
-  return lines.map((line) => {
-    return { spans: [{ text: line }] };
-  });
-}
-
 export function App(props: AppProps): ReactElement {
   const { exit } = useApp();
   const windowSize = useWindowSize();
@@ -72,24 +66,17 @@ export function App(props: AppProps): ReactElement {
   const [selectedNoteIndex, setSelectedNoteIndex] = useState(0);
   const [noteContent, setNoteContent] = useState("");
   const [noteScrollOffset, setNoteScrollOffset] = useState(0);
-  const [orchestratorSnapshot, setOrchestratorSnapshot] =
-    useState<EmbeddedTerminalSnapshot>({
-      title: "Claude",
-      lines: textLines("Starting embedded Claude terminal…"),
-      connected: true,
-    });
+  // C2: feed + errorMessage replace orchestratorSnapshot. Only one re-render when the
+  // terminal is first created; pty output re-renders only OrchestratorPane.
+  const [feed, setFeed] = useState<TerminalFeed | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activePaneMusicianId, setActivePaneMusicianId] = useState<
     string | null
   >(null);
   const [orchestratorFocused, setOrchestratorFocused] = useState(false);
   const [lazygitInstalled, setLazygitInstalled] = useState(false);
-  const [showLazyGit, setShowLazyGit] = useState(false);
+  const [lazyGitFeed, setLazyGitFeed] = useState<TerminalFeed | null>(null);
   const [lazyGitFocused, setLazyGitFocused] = useState(false);
-  const [lazyGitSnapshot, setLazyGitSnapshot] = useState<EmbeddedTerminalSnapshot>({
-    title: "lazygit",
-    lines: [],
-    connected: true,
-  });
   const terminalRef = useRef<EmbeddedTerminal | null>(null);
   const lazyGitTerminalRef = useRef<EmbeddedTerminal | null>(null);
   const lazyGitUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -232,24 +219,37 @@ export function App(props: AppProps): ReactElement {
         return musician.id === activePaneMusicianId;
       }) ?? null)
     : null;
-  const paneTitle = activePaneMusician
-    ? `Musician · ${activePaneMusician.name}`
-    : `Orchestrator · ${orchestratorSnapshot.title}`;
-  const terminalCols = Math.max(40, windowSize.columns - 53);
-  const terminalRows = Math.max(12, windowSize.rows - 4);
-  const terminalScreenLeft = 3;
-  const terminalScreenTop = 3;
+  const orchestratorPaneRef = useRef<DOMElement | null>(null);
+  const lazyGitBoxRef = useRef<DOMElement | null>(null);
+  const paneMetrics = useBoxMetrics(orchestratorPaneRef);
+  const lazyGitMetrics = useBoxMetrics(lazyGitBoxRef);
+
+  // With alt-screen enabled, paneMetrics gives exact screen coordinates after first
+  // layout pass. The OrchestratorPane Box has border(1)+paddingX(1) on each side and
+  // a title row + footer row inside the border, hence the +4 offsets below.
+  const terminalCols = paneMetrics.hasMeasured
+    ? Math.max(40, paneMetrics.width - 4)
+    : Math.max(40, windowSize.columns - 53);
+  const terminalRows = paneMetrics.hasMeasured
+    ? Math.max(12, paneMetrics.height - 4)
+    : Math.max(12, windowSize.rows - 4);
+  // +3 = border(1) + padding/title(1) + 1-based terminal mouse coordinate offset.
+  const terminalScreenLeft = paneMetrics.hasMeasured ? paneMetrics.left + 3 : 3;
+  const terminalScreenTop = paneMetrics.hasMeasured ? paneMetrics.top + 3 : 3;
   const terminalScreenRight = terminalScreenLeft + terminalCols - 1;
   const terminalScreenBottom = terminalScreenTop + terminalRows - 1;
 
+  // LazyGit dialog mouse offset: box left/top (0-indexed) + border(1) + paddingX/Y(1).
+  // Falls back to 5% approximation before first layout measurement.
+  const lazyGitDialogLeft = lazyGitMetrics.hasMeasured
+    ? lazyGitMetrics.left + 2
+    : Math.floor(windowSize.columns * 0.05);
+  const lazyGitDialogTop = lazyGitMetrics.hasMeasured
+    ? lazyGitMetrics.top + 2
+    : Math.floor(windowSize.rows * 0.05);
+
   const showTerminalError = (message: string): void => {
-    setOrchestratorSnapshot((current) => {
-      return {
-        title: current.title,
-        lines: textLines(message),
-        connected: false,
-      };
-    });
+    setErrorMessage(message);
   };
 
   const openSelectedTarget = async (
@@ -279,15 +279,11 @@ export function App(props: AppProps): ReactElement {
 
     const embeddedSessionLease = claimEmbeddedSessionLease(embedSession);
     let disposed = false;
-    let unsubscribe: (() => void) | undefined;
 
     const start = async (): Promise<void> => {
       try {
-        setOrchestratorSnapshot({
-          title: "Claude",
-          lines: textLines("Starting embedded Claude terminal…"),
-          connected: true,
-        });
+        setFeed(null);
+        setErrorMessage(null);
         await runEmbeddedSessionOperation(embedSession, async () => {
           await killSession(embedSession);
           await ensureEmbeddedSession(session, embedSession, projectPath);
@@ -306,21 +302,18 @@ export function App(props: AppProps): ReactElement {
           rows: terminalRows,
         });
         terminalRef.current = terminal;
-        unsubscribe = terminal.onChange((snapshot) => {
-          if (!disposed) {
-            setOrchestratorSnapshot(snapshot);
-          }
-        });
+        if (!disposed) {
+          setFeed(terminal);
+        } else {
+          terminal.dispose();
+          terminalRef.current = null;
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "unknown error";
-        setOrchestratorSnapshot({
-          title: "Claude",
-          lines: textLines(
-            `Unable to start embedded Claude terminal: ${message}`,
-          ),
-          connected: false,
-        });
+        showTerminalError(
+          `Unable to start embedded Claude terminal: ${message}`,
+        );
       }
     };
 
@@ -328,7 +321,8 @@ export function App(props: AppProps): ReactElement {
 
     return () => {
       disposed = true;
-      unsubscribe?.();
+      setFeed(null);
+      setErrorMessage(null);
       terminalRef.current?.dispose();
       terminalRef.current = null;
       void runEmbeddedSessionOperation(embedSession, async () => {
@@ -436,24 +430,7 @@ export function App(props: AppProps): ReactElement {
     }
 
     if (lazyGitFocused) {
-      if (key.escape) {
-        setShowLazyGit(false);
-        setLazyGitFocused(false);
-        lazyGitUnsubscribeRef.current?.();
-        lazyGitUnsubscribeRef.current = null;
-        lazyGitTerminalRef.current?.dispose();
-        lazyGitTerminalRef.current = null;
-        return;
-      }
-      const lazyGitMouseScroll = toTerminalMouseScroll(input);
-      if (lazyGitMouseScroll) {
-        const dialogLeft = Math.floor(windowSize.columns * 0.05);
-        const dialogTop = Math.floor(windowSize.rows * 0.05);
-        const translatedCol = Math.max(1, lazyGitMouseScroll.column - dialogLeft);
-        const translatedRow = Math.max(1, lazyGitMouseScroll.row - dialogTop);
-        lazyGitTerminalRef.current?.write(
-          `\u001b[<${lazyGitMouseScroll.button};${translatedCol};${translatedRow}M`,
-        );
+      if (input.startsWith("\x1b[<") || input.startsWith("[<")) {
         return;
       }
       const terminalInput = toTerminalInput(input, key);
@@ -555,7 +532,7 @@ export function App(props: AppProps): ReactElement {
       return;
     }
     if (action.kind === "open-lazygit") {
-      if (!lazygitInstalled || !projectPath || showLazyGit) {
+      if (!lazygitInstalled || !projectPath || lazyGitFeed !== null) {
         return;
       }
       const lazyGitCols = Math.max(40, Math.floor(windowSize.columns * 0.90) - 4);
@@ -570,9 +547,8 @@ export function App(props: AppProps): ReactElement {
       });
       lazyGitTerminalRef.current = lazyGitTerminal;
       const unsubscribe = lazyGitTerminal.onChange((snapshot) => {
-        setLazyGitSnapshot(snapshot);
         if (!snapshot.connected) {
-          setShowLazyGit(false);
+          setLazyGitFeed(null);
           setLazyGitFocused(false);
           lazyGitUnsubscribeRef.current?.();
           lazyGitUnsubscribeRef.current = null;
@@ -581,7 +557,7 @@ export function App(props: AppProps): ReactElement {
         }
       });
       lazyGitUnsubscribeRef.current = unsubscribe;
-      setShowLazyGit(true);
+      setLazyGitFeed(lazyGitTerminal);
       setLazyGitFocused(true);
       return;
     }
@@ -653,6 +629,7 @@ export function App(props: AppProps): ReactElement {
       selectedIndex={selectedIndex}
       permissionLevel={permissionLevel}
       tokenHint="—"
+      rows={windowSize.rows}
       now={now}
       pendingCount={pendingCount}
       dismissConfirmation={dismissConfirmation}
@@ -663,17 +640,18 @@ export function App(props: AppProps): ReactElement {
       selectedNoteIndex={selectedNoteIndex}
       noteContent={noteContent}
       noteScrollOffset={noteScrollOffset}
-      orchestratorTitle={paneTitle}
-      orchestratorLines={orchestratorSnapshot.lines}
+      feed={feed}
+      activeMusicianName={activePaneMusician?.name ?? null}
+      errorMessage={errorMessage}
       orchestratorFocused={orchestratorFocused}
-      orchestratorConnected={orchestratorSnapshot.connected}
       activeMusicianId={activePaneMusician?.id ?? null}
       orchestratorActive={activePaneMusician === null}
       version={props.version}
       lazygitInstalled={lazygitInstalled}
-      showLazyGit={showLazyGit}
+      lazyGitFeed={lazyGitFeed}
       lazyGitFocused={lazyGitFocused}
-      lazyGitLines={lazyGitSnapshot.lines}
+      orchestratorPaneRef={orchestratorPaneRef}
+      lazyGitBoxRef={lazyGitBoxRef}
     />
   );
 }

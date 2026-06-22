@@ -1,16 +1,25 @@
-import type { ReactElement } from "react";
-import { Box, Text } from "ink";
+import { memo, useEffect, useState, type ReactElement, type RefObject } from "react";
+import { Box, Text, type DOMElement } from "ink";
 import type {
   EmbeddedTerminalLine,
+  EmbeddedTerminalSnapshot,
   EmbeddedTerminalSpan,
+  TerminalFeed,
 } from "../embedded-terminal.js";
 
 export interface OrchestratorPaneProps {
-  title: string;
-  lines: EmbeddedTerminalLine[];
+  feed: TerminalFeed | null;
+  activeMusicianName: string | null;
+  errorMessage: string | null;
   focused: boolean;
-  connected: boolean;
+  boxRef?: RefObject<DOMElement | null>;
 }
+
+const LOADING_SNAPSHOT: EmbeddedTerminalSnapshot = {
+  title: "Claude",
+  lines: [{ spans: [{ text: "Starting embedded Claude terminal…" }] }],
+  connected: true,
+};
 
 export function resolveSpanStyle(
   span: EmbeddedTerminalSpan,
@@ -34,32 +43,74 @@ export function resolveSpanStyle(
   return style;
 }
 
-function renderSpan(
-  span: EmbeddedTerminalSpan,
-  index: number,
-  focused: boolean,
-): ReactElement {
-  const style = resolveSpanStyle(span, focused);
-  return (
-    <Text
-      key={`${index}:${span.text}`}
-      color={style.color}
-      backgroundColor={style.backgroundColor}
-      dimColor={style.dimColor}
-      bold={style.bold}
-      italic={style.italic}
-      underline={style.underline}
-      strikethrough={style.strikethrough}
-      inverse={style.inverse}
-    >
-      {span.text}
-    </Text>
-  );
+// C4: memoized row component — when the line object has stable identity (C3),
+// React.memo bails out of reconciliation for unchanged rows.
+interface RowProps {
+  line: EmbeddedTerminalLine;
+  rowIndex: number;
+  focused: boolean;
 }
 
-export function OrchestratorPane(props: OrchestratorPaneProps): ReactElement {
+const Row = memo(function Row({ line, rowIndex, focused }: RowProps): ReactElement {
+  return (
+    <Text wrap="truncate-end">
+      {line.spans.length > 0
+        ? line.spans.map((span, spanIndex) => {
+            const style = resolveSpanStyle(span, focused);
+            return (
+              <Text
+                key={`${rowIndex}:${spanIndex}`}
+                color={style.color}
+                backgroundColor={style.backgroundColor}
+                dimColor={style.dimColor}
+                bold={style.bold}
+                italic={style.italic}
+                underline={style.underline}
+                strikethrough={style.strikethrough}
+                inverse={style.inverse}
+              >
+                {span.text}
+              </Text>
+            );
+          })
+        : " "}
+    </Text>
+  );
+});
+
+// C2: OrchestratorPane holds its own snapshot state and subscribes to the terminal feed.
+// Wrapped in React.memo so chrome prop changes don't cause re-renders here, and internal
+// snapshot updates don't propagate upward.
+export const OrchestratorPane = memo(function OrchestratorPane(
+  props: OrchestratorPaneProps,
+): ReactElement {
+  const [snapshot, setSnapshot] = useState<EmbeddedTerminalSnapshot>(() => {
+    return props.feed ? props.feed.snapshot() : LOADING_SNAPSHOT;
+  });
+
+  useEffect(() => {
+    if (!props.feed) {
+      setSnapshot(LOADING_SNAPSHOT);
+      return;
+    }
+    return props.feed.onChange((s) => {
+      setSnapshot(s);
+    });
+  }, [props.feed]);
+
+  // Error message overrides terminal content when set.
+  const displayLines: EmbeddedTerminalLine[] = props.errorMessage !== null
+    ? [{ spans: [{ text: props.errorMessage }] }]
+    : snapshot.lines;
+  const displayConnected = props.errorMessage !== null ? false : snapshot.connected;
+
+  const title = props.activeMusicianName !== null
+    ? `Musician · ${props.activeMusicianName}`
+    : `Orchestrator · ${snapshot.title}`;
+
   return (
     <Box
+      ref={props.boxRef}
       flexGrow={1}
       flexDirection="column"
       borderStyle="single"
@@ -67,18 +118,17 @@ export function OrchestratorPane(props: OrchestratorPaneProps): ReactElement {
       minHeight={16}
       paddingX={1}
     >
-      <Text bold={true}>{props.title}</Text>
+      <Text bold={true}>{title}</Text>
       <Box flexDirection="column" flexGrow={1}>
-        {props.lines.length > 0 ? (
-          props.lines.map((line, index) => {
+        {displayLines.length > 0 ? (
+          displayLines.map((line, index) => {
             return (
-              <Text key={String(index)} wrap="truncate-end">
-                {line.spans.length > 0
-                  ? line.spans.map((span, spanIndex) =>
-                      renderSpan(span, spanIndex, props.focused),
-                    )
-                  : " "}
-              </Text>
+              <Row
+                key={String(index)}
+                line={line}
+                rowIndex={index}
+                focused={props.focused}
+              />
             );
           })
         ) : (
@@ -90,9 +140,9 @@ export function OrchestratorPane(props: OrchestratorPaneProps): ReactElement {
           ? "[Ctrl+g] sidebar · [Mouse wheel] scroll"
           : "[Ctrl+g] focus left terminal"}
       </Text>
-      {!props.connected ? (
+      {!displayConnected ? (
         <Text color="yellow">Embedded tmux client disconnected.</Text>
       ) : null}
     </Box>
   );
-}
+});
