@@ -4,6 +4,7 @@ import { AppView } from '../../src/tui/components/AppView.js';
 import { OrchestratorPane } from '../../src/tui/components/OrchestratorPane.js';
 import type { Musician } from '../../src/state.types.js';
 import type { OrchestraSummary } from '../../src/commands/list.js';
+import type { EmbeddedTerminalSnapshot, TerminalFeed } from '../../src/tui/embedded-terminal.js';
 
 const musicians: Musician[] = [{
   id: 'mus-001', name: 'alpha', task_summary: 't', status: 'working',
@@ -14,6 +15,16 @@ const orchestras: OrchestraSummary[] = [{
   id: 'aaa-one', project_path: '/tmp/one', permission_level: 'supervised',
   created_at: '2026-05-29T10:00:00Z', running: true, musician_count: 1,
 }];
+
+function makeFeed(snap: EmbeddedTerminalSnapshot): TerminalFeed {
+  return {
+    onChange: (listener) => {
+      listener(snap);
+      return () => {};
+    },
+    snapshot: () => snap,
+  };
+}
 
 describe('AppView', () => {
   it('renders concert hall, auditorium, and status bar together', () => {
@@ -28,10 +39,10 @@ describe('AppView', () => {
         tokenHint="—"
         pendingCount={1}
         now="2026-05-29T10:01:00Z"
-        orchestratorTitle="Claude / tmux"
-        orchestratorLines={[{ spans: [{ text: 'claude output' }] }]}
+        feed={makeFeed({ title: 'Claude / tmux', lines: [{ spans: [{ text: 'claude output' }] }], connected: true })}
+        activeMusicianName={null}
+        errorMessage={null}
         orchestratorFocused={false}
-        orchestratorConnected={true}
       />,
     );
     const frame = lastFrame() ?? '';
@@ -59,10 +70,10 @@ describe('AppView', () => {
         now={new Date(0).toISOString()}
         pendingCount={0}
         showHelp={true}
-        orchestratorTitle="Claude"
-        orchestratorLines={[]}
+        feed={null}
+        activeMusicianName={null}
+        errorMessage={null}
         orchestratorFocused={false}
-        orchestratorConnected={true}
       />,
     );
     const frame = (lastFrame() ?? '').toLowerCase();
@@ -76,13 +87,17 @@ describe('OrchestratorPane', () => {
   it('renders lines in a plain box without scroll props', () => {
     const { lastFrame } = render(
       <OrchestratorPane
-        title="Orchestrator"
-        lines={[
-          { spans: [{ text: 'line one' }] },
-          { spans: [{ text: 'line two' }] },
-        ]}
+        feed={makeFeed({
+          title: 'Orchestrator',
+          lines: [
+            { spans: [{ text: 'line one' }] },
+            { spans: [{ text: 'line two' }] },
+          ],
+          connected: true,
+        })}
+        activeMusicianName={null}
+        errorMessage={null}
         focused={false}
-        connected={true}
       />,
     );
     const frame = lastFrame() ?? '';

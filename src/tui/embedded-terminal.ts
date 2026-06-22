@@ -4,6 +4,9 @@ import { spawn, type IPty } from 'node-pty';
 
 const { Terminal } = xtermHeadless;
 
+// Target frame interval for coalescing pty output chunks (~60 fps).
+export const FRAME_MS = 16;
+
 export interface EmbeddedTerminalSpan {
   text: string;
   color?: string;
@@ -34,6 +37,12 @@ export interface EmbeddedTerminalOptions {
   rows: number;
   command?: string;
   commandArgs?: string[];
+}
+
+// Minimal subscribe/snapshot API — implemented by EmbeddedTerminal and by test fakes.
+export interface TerminalFeed {
+  onChange(listener: (snapshot: EmbeddedTerminalSnapshot) => void): () => void;
+  snapshot(): EmbeddedTerminalSnapshot;
 }
 
 type Listener = (snapshot: EmbeddedTerminalSnapshot) => void;
@@ -199,6 +208,32 @@ function buildLineSnapshot(
   };
 }
 
+// Returns true when two line snapshots have identical span content.
+function linesEqual(a: EmbeddedTerminalLine, b: EmbeddedTerminalLine): boolean {
+  if (a.spans.length !== b.spans.length) {
+    return false;
+  }
+  for (let i = 0; i < a.spans.length; i++) {
+    const sa = a.spans[i]!;
+    const sb = b.spans[i]!;
+    if (
+      sa.text !== sb.text
+      || sa.color !== sb.color
+      || sa.backgroundColor !== sb.backgroundColor
+      || sa.dimColor !== sb.dimColor
+      || sa.bold !== sb.bold
+      || sa.italic !== sb.italic
+      || sa.underline !== sb.underline
+      || sa.strikethrough !== sb.strikethrough
+      || sa.inverse !== sb.inverse
+      || sa.cursor !== sb.cursor
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function buildSnapshot(terminal: XTermTerminal, title: string, connected: boolean, cursorHidden = false): EmbeddedTerminalSnapshot {
   const buffer = terminal.buffer.active;
   const blankCell = buffer.getNullCell();
@@ -227,7 +262,7 @@ export function buildSnapshot(terminal: XTermTerminal, title: string, connected:
   };
 }
 
-export class EmbeddedTerminal {
+export class EmbeddedTerminal implements TerminalFeed {
   private readonly terminal: XTermTerminal;
   private readonly pty: IPty;
   private readonly listeners = new Set<Listener>();
@@ -235,6 +270,15 @@ export class EmbeddedTerminal {
   private title = 'Claude';
   private connected = true;
   private cursorHidden = false;
+
+  // C1: frame-coalescing state
+  private dirty = false;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // C3: row-identity cache — prevLines[row] holds the last emitted line for that row.
+  // forceFullRebuild bypasses the cache (after scroll/resize/clear).
+  private prevLines: EmbeddedTerminalLine[] = [];
+  private forceFullRebuild = true;
 
   public constructor(options: EmbeddedTerminalOptions) {
     this.terminal = new Terminal({
@@ -247,14 +291,16 @@ export class EmbeddedTerminal {
     // Track DECTCEM cursor visibility (CSI ?25h = show, CSI ?25l = hide)
     this.disposables.push(
       this.terminal.parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
-        if (params.includes(25)) {
+        if (params.includes(25) && this.cursorHidden) {
           this.cursorHidden = false;
+          this.forceFullRebuild = true;
         }
         return false;
       }),
       this.terminal.parser.registerCsiHandler({ prefix: '?', final: 'l' }, (params) => {
-        if (params.includes(25)) {
+        if (params.includes(25) && !this.cursorHidden) {
           this.cursorHidden = true;
+          this.forceFullRebuild = true;
         }
         return false;
       }),
@@ -275,17 +321,18 @@ export class EmbeddedTerminal {
 
     this.disposables.push(
       this.pty.onData((data) => {
+        // C1: coalesce — write to xterm then schedule a flush instead of publishing immediately.
         this.terminal.write(data, () => {
-          this.publish();
+          this.scheduleFlush();
         });
       }),
       this.pty.onExit(() => {
         this.connected = false;
-        this.publish();
+        this.scheduleFlush();
       }),
       this.terminal.onTitleChange((title) => {
         this.title = title.length > 0 ? title : 'Claude';
-        this.publish();
+        this.scheduleFlush();
       }),
     );
   }
@@ -299,33 +346,42 @@ export class EmbeddedTerminal {
   }
 
   public snapshot(): EmbeddedTerminalSnapshot {
-    return buildSnapshot(this.terminal, this.title, this.connected, this.cursorHidden);
+    return this.buildCachedSnapshot();
   }
 
   public resize(cols: number, rows: number): void {
     this.pty.resize(cols, rows);
     this.terminal.resize(cols, rows);
-    this.publish();
+    // Resize changes terminal dimensions; cancel any pending flush and publish immediately
+    // so the UI reflects the new size without waiting for the next frame.
+    this.clearFlushTimer();
+    this.dirty = false;
+    this.forceFullRebuild = true;
+    this.publishNow();
   }
 
   public scrollPages(pageCount: number): void {
     this.terminal.scrollPages(pageCount);
-    this.publish();
+    this.forceFullRebuild = true;
+    this.scheduleFlush();
   }
 
   public scrollLines(lineCount: number): void {
     this.terminal.scrollLines(lineCount);
-    this.publish();
+    this.forceFullRebuild = true;
+    this.scheduleFlush();
   }
 
   public scrollToTop(): void {
     this.terminal.scrollToTop();
-    this.publish();
+    this.forceFullRebuild = true;
+    this.scheduleFlush();
   }
 
   public scrollToBottom(): void {
     this.terminal.scrollToBottom();
-    this.publish();
+    this.forceFullRebuild = true;
+    this.scheduleFlush();
   }
 
   public write(data: string): void {
@@ -333,6 +389,7 @@ export class EmbeddedTerminal {
   }
 
   public dispose(): void {
+    this.clearFlushTimer();
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
@@ -342,10 +399,82 @@ export class EmbeddedTerminal {
     this.pty.kill();
   }
 
-  private publish(): void {
-    const snapshot = this.snapshot();
+  // C1: schedule a flush at most once per FRAME_MS.
+  private scheduleFlush(): void {
+    this.dirty = true;
+    if (this.flushTimer !== null) {
+      return;
+    }
+    this.flushTimer = setTimeout(() => {
+      this.flush();
+    }, FRAME_MS);
+  }
+
+  private clearFlushTimer(): void {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
+
+  private flush(): void {
+    this.flushTimer = null;
+    if (!this.dirty) {
+      return;
+    }
+    this.dirty = false;
+    this.publishNow();
+  }
+
+  private publishNow(): void {
+    const snapshot = this.buildCachedSnapshot();
     for (const listener of this.listeners) {
       listener(snapshot);
     }
+  }
+
+  // C3: build a snapshot, reusing previous line objects for rows whose content is unchanged.
+  // Stable references let React.memo on Row components bail out of reconciliation.
+  private buildCachedSnapshot(): EmbeddedTerminalSnapshot {
+    const buffer = this.terminal.buffer.active;
+    const blankCell = buffer.getNullCell();
+    let visibleCursorRow: number | null = null;
+    let visibleCursorColumn: number | null = null;
+    if (!this.cursorHidden) {
+      const cursorRow = (buffer.baseY + buffer.cursorY) - buffer.viewportY;
+      visibleCursorRow = cursorRow >= 0 && cursorRow < this.terminal.rows ? cursorRow : null;
+      visibleCursorColumn = visibleCursorRow !== null
+        ? Math.min(buffer.cursorX, this.terminal.cols)
+        : null;
+    }
+
+    const skipCache = this.forceFullRebuild || this.prevLines.length !== this.terminal.rows;
+    this.forceFullRebuild = false;
+
+    const lines: EmbeddedTerminalLine[] = [];
+    for (let row = 0; row < this.terminal.rows; row += 1) {
+      const line = buffer.getLine(buffer.viewportY + row);
+      const newLine = buildLineSnapshot(
+        line,
+        this.terminal.cols,
+        blankCell,
+        visibleCursorRow === row ? visibleCursorColumn : null,
+      );
+
+      const prevLine = this.prevLines[row];
+      if (!skipCache && prevLine !== undefined && linesEqual(prevLine, newLine)) {
+        lines.push(prevLine); // stable reference → React.memo skips re-render
+      } else {
+        lines.push(newLine);
+      }
+    }
+
+    this.prevLines = lines;
+
+    return {
+      title: this.title,
+      lines,
+      connected: this.connected,
+    };
   }
 }
