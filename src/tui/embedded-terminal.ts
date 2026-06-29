@@ -388,6 +388,55 @@ export class EmbeddedTerminal implements TerminalFeed {
     this.pty.write(data);
   }
 
+  public extractSelection(
+    startRow: number,
+    startCol: number,
+    endRow: number,
+    endCol: number,
+  ): string {
+    const buffer = this.terminal.buffer.active;
+    const rowTexts: string[] = [];
+
+    for (let r = startRow; r <= endRow; r++) {
+      const absIndex = buffer.viewportY + r;
+      const line = buffer.getLine(absIndex);
+
+      let rowStartCol: number;
+      let rowEndCol: number;
+
+      if (r === startRow && r === endRow) {
+        rowStartCol = startCol;
+        rowEndCol = endCol;
+      } else if (r === startRow) {
+        rowStartCol = startCol;
+        rowEndCol = this.terminal.cols - 1;
+      } else if (r === endRow) {
+        rowStartCol = 0;
+        rowEndCol = endCol;
+      } else {
+        rowStartCol = 0;
+        rowEndCol = this.terminal.cols - 1;
+      }
+
+      if (!line) {
+        rowTexts.push('');
+      } else {
+        rowTexts.push(line.translateToString(true, rowStartCol, rowEndCol + 1));
+      }
+    }
+
+    let result = rowTexts[0] ?? '';
+    for (let i = 1; i < rowTexts.length; i++) {
+      const thisAbsIndex = buffer.viewportY + startRow + i;
+      const thisLine = buffer.getLine(thisAbsIndex);
+      // isWrapped means this line is a soft-wrap continuation of the previous line.
+      const separator = (thisLine && thisLine.isWrapped) ? '' : '\n';
+      result += separator + (rowTexts[i] ?? '');
+    }
+
+    return result;
+  }
+
   public dispose(): void {
     this.clearFlushTimer();
     for (const disposable of this.disposables) {

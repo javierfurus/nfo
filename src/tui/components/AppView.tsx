@@ -3,6 +3,7 @@ import { Box, type DOMElement } from "ink";
 import type { Musician } from "../../state.types.js";
 import type { OrchestraSummary } from "../../commands/list.js";
 import type { TerminalFeed } from "../embedded-terminal.js";
+import type { SelectionRange } from "../copy-mode.js";
 import { ConcertHall } from "./ConcertHall.js";
 import { Auditorium } from "./Auditorium.js";
 import { StatusBar } from "./StatusBar.js";
@@ -43,6 +44,9 @@ export interface AppViewProps {
   lazyGitFocused?: boolean;
   orchestratorPaneRef?: RefObject<DOMElement | null>;
   lazyGitBoxRef?: RefObject<DOMElement | null>;
+  selection?: SelectionRange | null;
+  copyMode?: boolean;
+  terminalCols?: number;
 }
 
 export function AppView(props: AppViewProps): ReactElement {
@@ -56,6 +60,9 @@ export function AppView(props: AppViewProps): ReactElement {
           errorMessage={props.errorMessage}
           focused={props.orchestratorFocused}
           boxRef={props.orchestratorPaneRef}
+          selection={props.selection ?? null}
+          copyMode={props.copyMode ?? false}
+          terminalCols={props.terminalCols ?? 80}
         />
         <Box width={48} flexDirection="column">
           <SidebarHeader

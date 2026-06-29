@@ -213,6 +213,8 @@ export async function ensureNfoSessionUi(name: string): Promise<void> {
   await setSessionOption(name, 'mouse', 'on');
   await setSessionOption(name, 'status', 'off');
   await setSessionOption(name, 'extended-keys', 'on');
+  // Forward app OSC 52 clipboard writes to the outer terminal.
+  await setSessionOption(name, 'set-clipboard', 'on');
   await ensureSessionTerminalFeatures(name, REQUIRED_TERMINAL_FEATURES);
   await ensureNfoNavigationBindings();
 }

@@ -1,6 +1,13 @@
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useApp, useBoxMetrics, useInput, useStdout, useWindowSize, type DOMElement } from "ink";
+import {
+  useApp,
+  useBoxMetrics,
+  useInput,
+  useStdout,
+  useWindowSize,
+  type DOMElement,
+} from "ink";
 import { AppView } from "./AppView.js";
 import { reduceKey } from "../keymap.js";
 import { pollActivity } from "../poll-activity.js";
@@ -12,10 +19,7 @@ import { pollPermissions } from "../poll-permission.js";
 import { setMusicianStatus } from "../../state-updaters.js";
 import { watchOrchestraState, type StopWatching } from "../watch-state.js";
 import { listOrchestras, type OrchestraSummary } from "../../commands/list.js";
-import {
-  EmbeddedTerminal,
-  type TerminalFeed,
-} from "../embedded-terminal.js";
+import { EmbeddedTerminal, type TerminalFeed } from "../embedded-terminal.js";
 import {
   claimEmbeddedSessionLease,
   embeddedSessionLeaseIsCurrent,
@@ -23,8 +27,10 @@ import {
 } from "../embedded-session-lifecycle.js";
 import {
   toTerminalMouseScroll,
+  toTerminalMouseEvent,
   toTerminalInput,
   toTerminalViewportCommand,
+  clampToPane,
 } from "../terminal-input.js";
 import {
   embeddedSessionName,
@@ -32,7 +38,10 @@ import {
   killSession,
   selectWindow,
   sessionName,
+  setSessionOption,
 } from "../../tmux.js";
+import { emitOsc52 } from "../clipboard.js";
+import type { CopyModeState, SelectionRange } from "../copy-mode.js";
 import { execa } from "execa";
 import { noteList, noteRead } from "../../notes.js";
 import { NOTE_READER_VISIBLE_LINES } from "./NoteReader.js";
@@ -62,7 +71,9 @@ export function App(props: AppProps): ReactElement {
   const [showHelp, setShowHelp] = useState(false);
   const [showNoteReader, setShowNoteReader] = useState(false);
   const [noteFiles, setNoteFiles] = useState<string[]>([]);
-  const [noteReaderMode, setNoteReaderMode] = useState<"list" | "content">("list");
+  const [noteReaderMode, setNoteReaderMode] = useState<"list" | "content">(
+    "list",
+  );
   const [selectedNoteIndex, setSelectedNoteIndex] = useState(0);
   const [noteContent, setNoteContent] = useState("");
   const [noteScrollOffset, setNoteScrollOffset] = useState(0);
@@ -74,6 +85,8 @@ export function App(props: AppProps): ReactElement {
     string | null
   >(null);
   const [orchestratorFocused, setOrchestratorFocused] = useState(false);
+  const [copyMode, setCopyMode] = useState<CopyModeState>("off");
+  const [selection, setSelection] = useState<SelectionRange | null>(null);
   const [lazygitInstalled, setLazygitInstalled] = useState(false);
   const [lazyGitFeed, setLazyGitFeed] = useState<TerminalFeed | null>(null);
   const [lazyGitFocused, setLazyGitFocused] = useState(false);
@@ -84,11 +97,13 @@ export function App(props: AppProps): ReactElement {
 
   // Detect whether lazygit is installed.
   useEffect(() => {
-    execa('lazygit', ['--version'], { reject: false }).then((result) => {
-      setLazygitInstalled(result.exitCode === 0);
-    }).catch(() => {
-      // lazygit not available
-    });
+    execa("lazygit", ["--version"], { reject: false })
+      .then((result) => {
+        setLazygitInstalled(result.exitCode === 0);
+      })
+      .catch(() => {
+        // lazygit not available
+      });
   }, []);
 
   // Clean up lazygit terminal on unmount.
@@ -358,6 +373,34 @@ export function App(props: AppProps): ReactElement {
     };
   }, [stdout]);
 
+  // Enable button+motion tracking (?1002h) only while in copy mode so we receive
+  // drag events. This is a separate effect from the always-on ?1000h above to
+  // avoid flooding input with motion events outside copy mode.
+  useEffect(() => {
+    if (!stdout.isTTY) {
+      return;
+    }
+    if (copyMode === "off") {
+      return;
+    }
+    stdout.write("\u001b[?1002h");
+    return () => {
+      stdout.write("\u001b[?1002l");
+    };
+  }, [stdout, copyMode]);
+
+  // While in copy mode, disable tmux mouse so tmux does not grab drags.
+  // Restore mouse on exit and on unmount.
+  useEffect(() => {
+    if (!projectPath || copyMode === "off") {
+      return;
+    }
+    void setSessionOption(embedSession, "mouse", "off").catch(() => {});
+    return () => {
+      void setSessionOption(embedSession, "mouse", "on").catch(() => {});
+    };
+  }, [copyMode, embedSession, projectPath]);
+
   useEffect(() => {
     if (activePaneMusicianId === null) {
       return;
@@ -440,6 +483,104 @@ export function App(props: AppProps): ReactElement {
       return;
     }
 
+    // Copy mode: handle all input while in any ON_* state.
+    // Ctrl+G is silently ignored (no focus change mid-copy).
+    // All regular Claude-pane keystrokes are suspended.
+    if (copyMode !== "off") {
+      if (key.ctrl && input.toLowerCase() === "g") {
+        return;
+      }
+      if (key.ctrl && input.toLowerCase() === "y") {
+        setCopyMode("off");
+        setSelection(null);
+        return;
+      }
+      if (key.escape) {
+        if (copyMode === "on_selecting" || copyMode === "on_has_selection") {
+          setSelection(null);
+          setCopyMode("on_idle");
+        } else {
+          setCopyMode("off");
+        }
+        return;
+      }
+      // Scroll events are ignored during copy mode (no auto-scroll in alt-screen).
+      const scrollEvent = toTerminalMouseScroll(input);
+      if (scrollEvent) {
+        return;
+      }
+      // Mouse press/drag/release events drive the selection.
+      const mouseEvent = toTerminalMouseEvent(input);
+      if (mouseEvent) {
+        const rawCol = mouseEvent.column - terminalScreenLeft;
+        const rawRow = mouseEvent.row - terminalScreenTop;
+        const clamped = clampToPane(rawCol, rawRow, terminalCols, terminalRows);
+        const cell = { col: clamped.col, row: clamped.row };
+        if (mouseEvent.kind === "press") {
+          setSelection({ anchor: cell, focus: cell });
+          setCopyMode("on_selecting");
+        } else if (mouseEvent.kind === "drag") {
+          if (copyMode === "on_selecting") {
+            setSelection((prev) => {
+              if (!prev) {
+                return { anchor: cell, focus: cell };
+              }
+              return { anchor: prev.anchor, focus: cell };
+            });
+          }
+        } else if (mouseEvent.kind === "release") {
+          const currentSel = selection;
+          const anchor = currentSel ? currentSel.anchor : cell;
+          const finalSel = { anchor, focus: cell };
+          const isEmpty =
+            finalSel.anchor.col === finalSel.focus.col &&
+            finalSel.anchor.row === finalSel.focus.row;
+          if (isEmpty) {
+            setSelection(null);
+            setCopyMode("on_idle");
+          } else {
+            // Normalize to reading order for extraction.
+            let startRow: number;
+            let startCol: number;
+            let endRow: number;
+            let endCol: number;
+            if (
+              finalSel.anchor.row < finalSel.focus.row ||
+              (finalSel.anchor.row === finalSel.focus.row &&
+                finalSel.anchor.col <= finalSel.focus.col)
+            ) {
+              startRow = finalSel.anchor.row;
+              startCol = finalSel.anchor.col;
+              endRow = finalSel.focus.row;
+              endCol = finalSel.focus.col;
+            } else {
+              startRow = finalSel.focus.row;
+              startCol = finalSel.focus.col;
+              endRow = finalSel.anchor.row;
+              endCol = finalSel.anchor.col;
+            }
+            const terminal = terminalRef.current;
+            if (terminal) {
+              const text = terminal.extractSelection(
+                startRow,
+                startCol,
+                endRow,
+                endCol,
+              );
+              if (text.length > 0) {
+                emitOsc52(stdout, text);
+              }
+            }
+            setSelection(finalSel);
+            setCopyMode("on_has_selection");
+          }
+        }
+        return;
+      }
+      // All other keystrokes are suspended while in copy mode.
+      return;
+    }
+
     const mouseScroll = toTerminalMouseScroll(input);
     if (mouseScroll) {
       const insideTerminalViewport =
@@ -460,6 +601,11 @@ export function App(props: AppProps): ReactElement {
     if (orchestratorFocused) {
       if (key.ctrl && input.toLowerCase() === "g") {
         setOrchestratorFocused(false);
+        return;
+      }
+      if (key.ctrl && input.toLowerCase() === "y" && stdout.isTTY) {
+        setCopyMode("on_idle");
+        setSelection(null);
         return;
       }
       const viewportCommand = toTerminalViewportCommand(key);
@@ -535,8 +681,11 @@ export function App(props: AppProps): ReactElement {
       if (!lazygitInstalled || !projectPath || lazyGitFeed !== null) {
         return;
       }
-      const lazyGitCols = Math.max(40, Math.floor(windowSize.columns * 0.90) - 4);
-      const lazyGitRows = Math.max(12, Math.floor(windowSize.rows * 0.90) - 4);
+      const lazyGitCols = Math.max(
+        40,
+        Math.floor(windowSize.columns * 0.9) - 4,
+      );
+      const lazyGitRows = Math.max(12, Math.floor(windowSize.rows * 0.9) - 4);
       const lazyGitTerminal = new EmbeddedTerminal({
         sessionName: "",
         cwd: projectPath,
@@ -652,6 +801,9 @@ export function App(props: AppProps): ReactElement {
       lazyGitFocused={lazyGitFocused}
       orchestratorPaneRef={orchestratorPaneRef}
       lazyGitBoxRef={lazyGitBoxRef}
+      selection={selection}
+      copyMode={copyMode !== "off"}
+      terminalCols={terminalCols}
     />
   );
 }

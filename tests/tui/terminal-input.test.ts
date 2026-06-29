@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { Key } from 'ink';
 import {
   toTerminalMouseScroll,
+  toTerminalMouseEvent,
   toTerminalInput,
   toTerminalViewportCommand,
+  clampToPane,
 } from '../../src/tui/terminal-input.js';
 
 function makeKey(overrides: Partial<Key> = {}): Key {
@@ -109,5 +111,78 @@ describe('toTerminalViewportCommand', () => {
   it('ignores unmodified terminal navigation keys', () => {
     expect(toTerminalViewportCommand(makeKey({ pageUp: true }))).toBeNull();
     expect(toTerminalViewportCommand(makeKey({ end: true }))).toBeNull();
+  });
+});
+
+describe('toTerminalMouseEvent', () => {
+  it('parses a left-button press event', () => {
+    expect(toTerminalMouseEvent('\x1b[<0;12;5M')).toEqual({
+      kind: 'press',
+      column: 12,
+      row: 5,
+    });
+  });
+
+  it('parses a drag event (button with bit 32 set)', () => {
+    expect(toTerminalMouseEvent('\x1b[<32;14;6M')).toEqual({
+      kind: 'drag',
+      column: 14,
+      row: 6,
+    });
+  });
+
+  it('parses a release event (lowercase m suffix)', () => {
+    expect(toTerminalMouseEvent('\x1b[<0;14;6m')).toEqual({
+      kind: 'release',
+      column: 14,
+      row: 6,
+    });
+  });
+
+  it('accepts input without leading ESC (matches existing toTerminalMouseScroll behaviour)', () => {
+    expect(toTerminalMouseEvent('[<0;12;5M')).toEqual({
+      kind: 'press',
+      column: 12,
+      row: 5,
+    });
+  });
+
+  it('returns null for malformed input', () => {
+    expect(toTerminalMouseEvent('hello')).toBeNull();
+    expect(toTerminalMouseEvent('\x1b[<abc;12;5M')).toBeNull();
+    expect(toTerminalMouseEvent('')).toBeNull();
+  });
+
+  it('returns null for scroll/wheel events (button & 64) — those are handled by toTerminalMouseScroll', () => {
+    expect(toTerminalMouseEvent('\x1b[<64;12;5M')).toBeNull();
+    expect(toTerminalMouseEvent('\x1b[<65;12;5M')).toBeNull();
+  });
+
+  it('scroll events are still handled by toTerminalMouseScroll when toTerminalMouseEvent returns null', () => {
+    expect(toTerminalMouseScroll('[<64;12;8M')).not.toBeNull();
+    expect(toTerminalMouseEvent('[<64;12;8M')).toBeNull();
+  });
+});
+
+describe('clampToPane', () => {
+  it('returns coordinates unchanged when inside pane bounds', () => {
+    expect(clampToPane(5, 3, 10, 8)).toEqual({ col: 5, row: 3 });
+    expect(clampToPane(0, 0, 10, 8)).toEqual({ col: 0, row: 0 });
+    expect(clampToPane(9, 7, 10, 8)).toEqual({ col: 9, row: 7 });
+  });
+
+  it('clamps negative coordinates to 0', () => {
+    expect(clampToPane(-1, -1, 10, 8)).toEqual({ col: 0, row: 0 });
+    expect(clampToPane(-100, -50, 10, 8)).toEqual({ col: 0, row: 0 });
+  });
+
+  it('clamps coordinates beyond pane dimensions to the last cell', () => {
+    expect(clampToPane(15, 12, 10, 8)).toEqual({ col: 9, row: 7 });
+    expect(clampToPane(10, 8, 10, 8)).toEqual({ col: 9, row: 7 });
+  });
+
+  it('clamps col and row independently', () => {
+    expect(clampToPane(-5, 3, 10, 8)).toEqual({ col: 0, row: 3 });
+    expect(clampToPane(5, 20, 10, 8)).toEqual({ col: 5, row: 7 });
   });
 });
