@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.7](https://github.com/javierfurus/nfo/compare/nfo-cli-v0.0.6...nfo-cli-v0.0.7) (2026-06-29)
+
+
+### Features
+
+* add lazygit and CLAUDE_CONFIG_PATH ([0d3766c](https://github.com/javierfurus/nfo/commit/0d3766cf9bfa2272f3c6ee1d96f17b1ab03462c1))
+* first two phases of performance improvement ([9f4e55c](https://github.com/javierfurus/nfo/commit/9f4e55c51c1d05aab78255d2cfbae4bed1972f81))
+* **lazygit:** resize lazygit ([df53a1e](https://github.com/javierfurus/nfo/commit/df53a1e5fa8925f41b67c82ddf9ec371be34d7de))
+* **lazygit:** update README with LazyGit ([e573640](https://github.com/javierfurus/nfo/commit/e5736406dd64036565a943bfdc2bf04c08963619))
+* **tui:** allow copy mode in Agent pane ([2490090](https://github.com/javierfurus/nfo/commit/249009090706b0029a88eaa5ea44ccad18e1f74d))
+
 ## [0.0.6](https://github.com/javierfurus/nfo/compare/nfo-cli-v0.0.5...nfo-cli-v0.0.6) (2026-06-09)
 
 
