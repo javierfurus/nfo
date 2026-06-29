@@ -56,6 +56,11 @@ You can check at any time what the Agent has jotted down in the Notes popup. Bro
 
 ![The read view of the Notes dialog](https://raw.githubusercontent.com/javierfurus/nfo/refs/heads/main/assets/notes-read.png "Notes: Read view")
 
+### LazyGit? More like Git-me-to-the-code!
+
+You can use LazyGit jesseduffield's [LazyGit](https://github.com/jesseduffield/lazygit) to see what changes your musicians made and edit them if necessary. Commit, merge or push as you see it fit - let the musicians do what they do best while you retain control!
+
+Just hit "g" while on the right sidebar to open the UI
 
 ### I like control
 
@@ -81,15 +86,15 @@ NFO is currently very experimental. There are many things that will change, impr
 
 Here are the currently known limitations and what should come in the future:
 
-- [X] ~~No package, NFO can only be run after being built (I am planning to ship through `npm` and `brew`)~~
+- [x] ~~No package, NFO can only be run after being built (I am planning to ship through `npm` and `brew`)~~
   - `npm` is ready! Brew needs some time... to brew.
-- [X] ~~Worktrees are not always cleaned up properly~~
-- [X] ~~Currently, the tools available to the musicians are not limited~~
-- [X] ~~The notes section might not render properly at times~~
+- [x] ~~Worktrees are not always cleaned up properly~~
+- [x] ~~Currently, the tools available to the musicians are not limited~~
+- [x] ~~The notes section might not render properly at times~~
   - New Notes section has been implemented!
 - [ ] Provide a simpler way to manage orchestras
-- [X] Performance can degrade over time
-- [X] ~~The TUI can flicker because of the Node-PTY embedding~~
+- [x] Performance can degrade over time
+- [x] ~~The TUI can flicker because of the Node-PTY embedding~~
   - Now fresh fast and **flicker-free**!
 - [ ] The current Tmux based communication can be flaky
 
