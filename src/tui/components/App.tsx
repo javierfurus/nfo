@@ -263,6 +263,17 @@ export function App(props: AppProps): ReactElement {
     ? lazyGitMetrics.top + 2
     : Math.floor(windowSize.rows * 0.05);
 
+  // LazyGit dialog box is width/height 90% with border(1)+padding(1) on each side,
+  // hence the -4 to get the inner content area. Once the box is measured we use its
+  // real dimensions (mirroring the Claude terminal above); before first layout we
+  // fall back to the 90% window approximation.
+  const lazyGitCols = lazyGitMetrics.hasMeasured
+    ? Math.max(40, lazyGitMetrics.width - 4)
+    : Math.max(40, Math.floor(windowSize.columns * 0.9) - 4);
+  const lazyGitRows = lazyGitMetrics.hasMeasured
+    ? Math.max(12, lazyGitMetrics.height - 4)
+    : Math.max(12, Math.floor(windowSize.rows * 0.9) - 4);
+
   const showTerminalError = (message: string): void => {
     setErrorMessage(message);
   };
@@ -361,6 +372,18 @@ export function App(props: AppProps): ReactElement {
       showTerminalError("Embedded Claude terminal resize failed.");
     }
   }, [terminalCols, terminalRows]);
+
+  useEffect(() => {
+    const lazyGitTerminal = lazyGitTerminalRef.current;
+    if (!lazyGitTerminal) {
+      return;
+    }
+    try {
+      lazyGitTerminal.resize(lazyGitCols, lazyGitRows);
+    } catch {
+      showTerminalError("Embedded lazygit terminal resize failed.");
+    }
+  }, [lazyGitCols, lazyGitRows]);
 
   useEffect(() => {
     if (!stdout.isTTY) {
@@ -681,11 +704,6 @@ export function App(props: AppProps): ReactElement {
       if (!lazygitInstalled || !projectPath || lazyGitFeed !== null) {
         return;
       }
-      const lazyGitCols = Math.max(
-        40,
-        Math.floor(windowSize.columns * 0.9) - 4,
-      );
-      const lazyGitRows = Math.max(12, Math.floor(windowSize.rows * 0.9) - 4);
       const lazyGitTerminal = new EmbeddedTerminal({
         sessionName: "",
         cwd: projectPath,
