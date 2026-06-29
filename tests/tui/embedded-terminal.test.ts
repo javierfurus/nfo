@@ -254,3 +254,73 @@ describe('EmbeddedTerminal row referential identity (C3)', () => {
     terminal.dispose();
   });
 });
+
+// ---------- extractSelection ----------
+
+describe('EmbeddedTerminal.extractSelection', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    capturedOnData = () => {};
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function makeTerminal(cols: number, rows: number): EmbeddedTerminal {
+    return new EmbeddedTerminal({
+      sessionName: 'nfo-test-extract',
+      cwd: '/tmp',
+      cols,
+      rows,
+    });
+  }
+
+  it('extracts a single-row partial selection', async () => {
+    const terminal = makeTerminal(20, 3);
+    capturedOnData('hello world');
+    await vi.advanceTimersByTimeAsync(FRAME_MS + 10);
+    // 'hello' = cols 0-4
+    const text = terminal.extractSelection(0, 0, 0, 4);
+    expect(text).toBe('hello');
+    terminal.dispose();
+  });
+
+  it('extracts a multi-row selection with newlines between hard-wrapped rows', async () => {
+    const terminal = makeTerminal(10, 4);
+    // Write two lines separated by CR+LF so they are separate buffer lines.
+    capturedOnData('abcde\r\nfghij');
+    await vi.advanceTimersByTimeAsync(FRAME_MS + 10);
+    // Row 0: 'abcde', row 1: 'fghij'
+    const text = terminal.extractSelection(0, 0, 1, 4);
+    expect(text).toBe('abcde\nfghij');
+    terminal.dispose();
+  });
+
+  it('trims trailing whitespace on each row', async () => {
+    const terminal = makeTerminal(20, 3);
+    capturedOnData('hi');
+    await vi.advanceTimersByTimeAsync(FRAME_MS + 10);
+    // Row 0 has 'hi' followed by 18 blank cells; translateToString(true,...) trims them.
+    const text = terminal.extractSelection(0, 0, 0, 19);
+    expect(text).toBe('hi');
+    terminal.dispose();
+  });
+
+  it('returns empty string for an out-of-range row', () => {
+    const terminal = makeTerminal(20, 3);
+    // No data written; buffer lines are undefined → treated as empty.
+    const text = terminal.extractSelection(0, 0, 0, 10);
+    expect(text).toBe('');
+    terminal.dispose();
+  });
+
+  it('handles single-cell selection', async () => {
+    const terminal = makeTerminal(20, 3);
+    capturedOnData('ABCDE');
+    await vi.advanceTimersByTimeAsync(FRAME_MS + 10);
+    const text = terminal.extractSelection(0, 2, 0, 2);
+    expect(text).toBe('C');
+    terminal.dispose();
+  });
+});

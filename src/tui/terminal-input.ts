@@ -13,6 +13,12 @@ export interface TerminalMouseScroll {
   sequence: string;
 }
 
+export interface TerminalMouseEvent {
+  kind: 'press' | 'drag' | 'release';
+  column: number;
+  row: number;
+}
+
 const sgrMouseSequence =
   /^(?:\u001b)?\[<(?<button>\d+);(?<column>\d+);(?<row>\d+)(?<suffix>[Mm])$/u;
 
@@ -79,6 +85,55 @@ export function toTerminalMouseScroll(input: string): TerminalMouseScroll | null
     column,
     row,
     sequence: `\u001b[<${button};${column};${row}${match.groups.suffix}`,
+  };
+}
+
+export function toTerminalMouseEvent(input: string): TerminalMouseEvent | null {
+  const match = sgrMouseSequence.exec(input);
+  if (!match?.groups) {
+    return null;
+  }
+
+  const button = Number(match.groups.button);
+  const column = Number(match.groups.column);
+  const row = Number(match.groups.row);
+  const suffix = match.groups.suffix;
+
+  if (
+    !Number.isFinite(button)
+    || !Number.isFinite(column)
+    || !Number.isFinite(row)
+  ) {
+    return null;
+  }
+
+  // Scroll/wheel events (bit 6 set) are handled by toTerminalMouseScroll, not here.
+  if ((button & 64) !== 0) {
+    return null;
+  }
+
+  if (suffix === 'm') {
+    return { kind: 'release', column, row };
+  }
+
+  if (suffix === 'M') {
+    // Bit 5 set = motion event (drag with button held).
+    const kind = (button & 32) !== 0 ? 'drag' : 'press';
+    return { kind, column, row };
+  }
+
+  return null;
+}
+
+export function clampToPane(
+  col: number,
+  row: number,
+  terminalCols: number,
+  terminalRows: number,
+): { col: number; row: number } {
+  return {
+    col: Math.max(0, Math.min(terminalCols - 1, col)),
+    row: Math.max(0, Math.min(terminalRows - 1, row)),
   };
 }
 

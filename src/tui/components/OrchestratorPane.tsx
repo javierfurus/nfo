@@ -6,6 +6,7 @@ import type {
   EmbeddedTerminalSpan,
   TerminalFeed,
 } from "../embedded-terminal.js";
+import type { SelectionRange } from "../copy-mode.js";
 
 export interface OrchestratorPaneProps {
   feed: TerminalFeed | null;
@@ -13,6 +14,9 @@ export interface OrchestratorPaneProps {
   errorMessage: string | null;
   focused: boolean;
   boxRef?: RefObject<DOMElement | null>;
+  selection: SelectionRange | null;
+  copyMode: boolean;
+  terminalCols: number;
 }
 
 const LOADING_SNAPSHOT: EmbeddedTerminalSnapshot = {
@@ -43,33 +47,162 @@ export function resolveSpanStyle(
   return style;
 }
 
+interface RowSelectionRange {
+  startCol: number;
+  endCol: number;
+}
+
+function getRowSelectionRange(
+  rowIndex: number,
+  selection: SelectionRange,
+  terminalCols: number,
+): RowSelectionRange | null {
+  // Normalize anchor/focus to reading order (row-major).
+  let startRow: number;
+  let startCol: number;
+  let endRow: number;
+  let endCol: number;
+
+  const { anchor, focus } = selection;
+  if (
+    anchor.row < focus.row
+    || (anchor.row === focus.row && anchor.col <= focus.col)
+  ) {
+    startRow = anchor.row;
+    startCol = anchor.col;
+    endRow = focus.row;
+    endCol = focus.col;
+  } else {
+    startRow = focus.row;
+    startCol = focus.col;
+    endRow = anchor.row;
+    endCol = anchor.col;
+  }
+
+  if (rowIndex < startRow || rowIndex > endRow) {
+    return null;
+  }
+
+  if (startRow === endRow) {
+    return { startCol, endCol };
+  }
+
+  if (rowIndex === startRow) {
+    return { startCol, endCol: terminalCols - 1 };
+  }
+
+  if (rowIndex === endRow) {
+    return { startCol: 0, endCol };
+  }
+
+  return { startCol: 0, endCol: terminalCols - 1 };
+}
+
+interface RenderSpan {
+  key: string;
+  text: string;
+  style: Omit<EmbeddedTerminalSpan, "text" | "cursor">;
+}
+
+function buildRenderSpans(
+  line: EmbeddedTerminalLine,
+  rowIndex: number,
+  focused: boolean,
+  selRange: RowSelectionRange | null,
+): RenderSpan[] {
+  const spans: RenderSpan[] = [];
+  let colOffset = 0;
+  let fragmentIndex = 0;
+
+  for (const span of line.spans) {
+    const baseStyle = resolveSpanStyle(span, focused);
+    const spanStart = colOffset;
+    const spanEnd = colOffset + span.text.length - 1;
+
+    if (
+      !selRange
+      || spanEnd < selRange.startCol
+      || spanStart > selRange.endCol
+    ) {
+      spans.push({
+        key: `${rowIndex}:${fragmentIndex}`,
+        text: span.text,
+        style: baseStyle,
+      });
+      fragmentIndex += 1;
+    } else {
+      const intStart = Math.max(spanStart, selRange.startCol);
+      const intEnd = Math.min(spanEnd, selRange.endCol);
+
+      // Segment before the selection highlight.
+      if (intStart > spanStart) {
+        spans.push({
+          key: `${rowIndex}:${fragmentIndex}`,
+          text: span.text.slice(0, intStart - spanStart),
+          style: baseStyle,
+        });
+        fragmentIndex += 1;
+      }
+
+      // Highlighted segment (inverse video).
+      spans.push({
+        key: `${rowIndex}:${fragmentIndex}`,
+        text: span.text.slice(intStart - spanStart, intEnd - spanStart + 1),
+        style: { ...baseStyle, inverse: true },
+      });
+      fragmentIndex += 1;
+
+      // Segment after the selection highlight.
+      if (intEnd < spanEnd) {
+        spans.push({
+          key: `${rowIndex}:${fragmentIndex}`,
+          text: span.text.slice(intEnd - spanStart + 1),
+          style: baseStyle,
+        });
+        fragmentIndex += 1;
+      }
+    }
+
+    colOffset += span.text.length;
+  }
+
+  return spans;
+}
+
 // C4: memoized row component — when the line object has stable identity (C3),
 // React.memo bails out of reconciliation for unchanged rows.
 interface RowProps {
   line: EmbeddedTerminalLine;
   rowIndex: number;
   focused: boolean;
+  selectionRange: RowSelectionRange | null;
 }
 
-const Row = memo(function Row({ line, rowIndex, focused }: RowProps): ReactElement {
+const Row = memo(function Row({
+  line,
+  rowIndex,
+  focused,
+  selectionRange,
+}: RowProps): ReactElement {
+  const renderSpans = buildRenderSpans(line, rowIndex, focused, selectionRange);
+
   return (
     <Text wrap="truncate-end">
-      {line.spans.length > 0
-        ? line.spans.map((span, spanIndex) => {
-            const style = resolveSpanStyle(span, focused);
+      {renderSpans.length > 0
+        ? renderSpans.map((rs) => {
             return (
               <Text
-                key={`${rowIndex}:${spanIndex}`}
-                color={style.color}
-                backgroundColor={style.backgroundColor}
-                dimColor={style.dimColor}
-                bold={style.bold}
-                italic={style.italic}
-                underline={style.underline}
-                strikethrough={style.strikethrough}
-                inverse={style.inverse}
+                key={rs.key}
+                color={rs.style.color}
+                backgroundColor={rs.style.backgroundColor}
+                dimColor={rs.style.dimColor}
+                bold={rs.style.bold}
+                italic={rs.style.italic}
+                underline={rs.style.underline}
+                strikethrough={rs.style.strikethrough}
+                inverse={rs.style.inverse}
               >
-                {span.text}
+                {rs.text}
               </Text>
             );
           })
@@ -108,6 +241,10 @@ export const OrchestratorPane = memo(function OrchestratorPane(
     ? `Musician · ${props.activeMusicianName}`
     : `Orchestrator · ${snapshot.title}`;
 
+  const headerText = props.copyMode
+    ? "COPY MODE — drag to select · Ctrl+Y/Esc to exit"
+    : title;
+
   return (
     <Box
       ref={props.boxRef}
@@ -118,16 +255,20 @@ export const OrchestratorPane = memo(function OrchestratorPane(
       minHeight={16}
       paddingX={1}
     >
-      <Text bold={true}>{title}</Text>
+      <Text bold={true}>{headerText}</Text>
       <Box flexDirection="column" flexGrow={1}>
         {displayLines.length > 0 ? (
           displayLines.map((line, index) => {
+            const rowSelRange = props.selection
+              ? getRowSelectionRange(index, props.selection, props.terminalCols)
+              : null;
             return (
               <Row
                 key={String(index)}
                 line={line}
                 rowIndex={index}
                 focused={props.focused}
+                selectionRange={rowSelRange}
               />
             );
           })
