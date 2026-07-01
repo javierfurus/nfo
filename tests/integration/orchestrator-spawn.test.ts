@@ -32,7 +32,7 @@ describe('NFO MCP server (e2e)', () => {
     delete process.env.NFO_HOME;
   });
 
-  it('lists 9 tools and dispatches spawn_musician via JSON-RPC', async () => {
+  it('lists 10 tools and dispatches spawn_musician via JSON-RPC', async () => {
     const cfg = await makeTmpConfig();
     cleanups.push(cfg.cleanup);
     process.env.NFO_HOME = cfg.path;
@@ -79,7 +79,7 @@ describe('NFO MCP server (e2e)', () => {
     send({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
     await waitFor(() => responses.some(r => r.id === 2));
     const listResp = responses.find(r => r.id === 2) as any;
-    expect(listResp.result.tools.length).toBe(9);
+    expect(listResp.result.tools.length).toBe(10);
 
     send({
       jsonrpc: '2.0', id: 3, method: 'tools/call',

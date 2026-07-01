@@ -13,6 +13,7 @@ describe('NFO MCP tool definitions', () => {
       'note_write',
       'query_musician',
       'report_done',
+      'report_state',
       'spawn_musician',
     ]);
   });
