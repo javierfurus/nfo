@@ -64,4 +64,30 @@ describe('Auditorium', () => {
     const frame = lastFrame() ?? '';
     expect(frame).toContain('awaiting: tool');
   });
+
+  it('renders the model tag and runtime since spawn', () => {
+    const musicians = [
+      mus({ id: 'mus-001', name: 'alpha', model: 'haiku',
+            spawned_at: '2026-05-29T10:00:00Z', last_activity: '2026-05-29T10:01:30Z' }),
+    ];
+    const { lastFrame } = render(
+      <Auditorium musicians={musicians} activity={{ 'mus-001': 'editing file' }}
+        selectedIndex={0} now="2026-05-29T10:02:00Z" />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('haiku');
+    expect(frame).toContain('2m'); // runtime since spawned_at (10:00 -> 10:02)
+    expect(frame).toContain('editing file');
+  });
+
+  it('renders a waiting musician without an awaiting-permission line', () => {
+    const musicians = [mus({ id: 'mus-001', name: 'alpha', status: 'waiting' })];
+    const { lastFrame } = render(
+      <Auditorium musicians={musicians} activity={{ 'mus-001': 'handed back' }}
+        selectedIndex={0} now="2026-05-29T10:02:00Z" />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('◐');
+    expect(frame).toContain('handed back');
+  });
 });
