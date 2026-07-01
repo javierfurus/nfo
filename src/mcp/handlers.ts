@@ -109,7 +109,7 @@ export async function dispatch(
         next_steps: nextSteps,
         reported_at: reportedAt,
       });
-      await setMusicianStatus(orchestraId, callerId, "idle");
+      await setMusicianStatus(orchestraId, callerId, "waiting");
       const deliveredMessages = await drainQueuedMusicianMessages(
         orchestraId,
         callerId,
