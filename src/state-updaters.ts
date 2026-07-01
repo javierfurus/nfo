@@ -98,6 +98,36 @@ export async function setMusicianLatestReport(
   });
 }
 
+const MAX_DETAIL_LEN = 100;
+
+export function truncateDetail(detail: string): string {
+  if (detail.length > MAX_DETAIL_LEN) {
+    return detail.slice(0, MAX_DETAIL_LEN - 1) + '…';
+  }
+  return detail;
+}
+
+export async function setMusicianState(
+  orchestraId: string,
+  musicianId: string,
+  detail: string,
+  timestamp?: string,
+): Promise<string> {
+  const ts = timestamp ?? new Date().toISOString();
+  const stored = truncateDetail(detail);
+  await update(orchestraId, (s) => {
+    const m = s.musicians.find((mu) => { return mu.id === musicianId; });
+    if (!m) {
+      throw new Error(`Unknown musician: ${musicianId}`);
+    }
+    m.status = 'working';
+    m.detail = stored;
+    m.last_state_report = ts;
+    m.last_activity = ts;
+  });
+  return stored;
+}
+
 export async function setOrchestratorSessionId(
   orchestraId: string,
   sessionId: string,
