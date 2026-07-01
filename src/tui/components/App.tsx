@@ -10,7 +10,6 @@ import {
 } from "ink";
 import { AppView } from "./AppView.js";
 import { reduceKey } from "../keymap.js";
-import { pollActivity } from "../poll-activity.js";
 import {
   syncMusicianIdleState,
   type MusicianIdleTracker,
@@ -173,7 +172,9 @@ export function App(props: AppProps): ReactElement {
       await reconcileMusicianLiveness(props.orchestraId);
       const s = await readState(props.orchestraId);
       if (s) {
-        const a = await pollActivity(s);
+        const a = Object.fromEntries(
+          s.musicians.map((m) => { return [m.id, m.detail ?? '']; }),
+        );
         setActivity(a);
       }
     };
