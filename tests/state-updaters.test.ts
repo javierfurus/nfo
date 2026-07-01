@@ -7,10 +7,15 @@ import {
   setMusicianClaudeSessionId,
   setMusicianTmuxWindowId,
   touchMusicianActivity,
+  setMusicianState,
+  truncateDetail,
 } from '../src/state-updaters.js';
 import { ensureOrchestraDir, writeState, readState } from '../src/state.js';
 import { makeInitialState } from '../src/state.types.js';
 import { makeTmpConfig } from './helpers/tmp-config.js';
+import { makeTmpRepo } from './helpers/tmp-repo.js';
+import { projectKeyFromPath } from '../src/project-key.js';
+import type { Musician } from '../src/state.types.js';
 
 describe('state updaters', () => {
   const cleanups: Array<() => Promise<void>> = [];
@@ -107,6 +112,59 @@ describe('state updaters', () => {
     await setMusicianTmuxWindowId('orch-g', 'mus-001', '@42');
     const state = await readState('orch-g');
     expect(state!.musicians[0].tmux_window_id).toBe('@42');
+  });
+});
+
+function mus(over: Partial<Musician>): Musician {
+  return {
+    id: 'mus-001', name: 'tester', task_summary: 't', status: 'working',
+    tmux_window_id: '@1', claude_session_id: null, worktree_path: null, branch: null,
+    spawned_at: '2026-07-01T10:00:00Z', last_activity: '2026-07-01T10:00:00Z',
+    ...over,
+  };
+}
+
+describe('setMusicianState', () => {
+  const cleanups: Array<() => Promise<void>> = [];
+  afterEach(async () => {
+    for (const c of cleanups) { await c(); }
+    cleanups.length = 0;
+    delete process.env.NFO_HOME;
+  });
+
+  async function setup(): Promise<string> {
+    const cfg = await makeTmpConfig();
+    cleanups.push(cfg.cleanup);
+    process.env.NFO_HOME = cfg.path;
+    const repo = await makeTmpRepo();
+    cleanups.push(repo.cleanup);
+    const orchId = projectKeyFromPath(repo.path);
+    await ensureOrchestraDir(orchId);
+    await writeState(orchId, makeInitialState({
+      orchestraId: orchId, projectPath: repo.path, permissionLevel: 'supervised',
+    }));
+    return orchId;
+  }
+
+  it('truncateDetail caps at 100 chars with an ellipsis', () => {
+    expect(truncateDetail('short')).toBe('short');
+    const long = 'x'.repeat(150);
+    const out = truncateDetail(long);
+    expect(out.length).toBe(100);
+    expect(out.endsWith('…')).toBe(true);
+  });
+
+  it('sets working + stores detail + stamps last_state_report', async () => {
+    const orchId = await setup();
+    await addMusician(orchId, mus({ id: 'mus-001', status: 'idle' }));
+    const stored = await setMusicianState(orchId, 'mus-001', 'running tests', '2026-07-01T10:05:00Z');
+    expect(stored).toBe('running tests');
+    const state = await readState(orchId);
+    const m = state!.musicians[0];
+    expect(m.status).toBe('working');
+    expect(m.detail).toBe('running tests');
+    expect(m.last_state_report).toBe('2026-07-01T10:05:00Z');
+    expect(m.last_activity).toBe('2026-07-01T10:05:00Z');
   });
 });
 
