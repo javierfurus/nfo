@@ -73,3 +73,29 @@ describe("NoteReader list mode", () => {
     expect(frame).toContain("beta.md");
   });
 });
+
+describe("renderMarkdownLines code block highlighting", () => {
+  it("applies 24-bit ANSI color escapes to a supported fenced code block", () => {
+    const markdown = "```ts\nconst x: number = 1;\n```";
+    const rendered = renderMarkdownLines(markdown, 80).join("\n");
+    expect(rendered).toContain("\x1b[38;2;");
+  });
+
+  it("does not throw for an unsupported language and still renders the code", () => {
+    const markdown = "```python\nprint('hi')\n```";
+    let rendered: string[] = [];
+    expect(() => {
+      rendered = renderMarkdownLines(markdown, 80);
+    }).not.toThrow();
+    expect(rendered.join("\n")).toContain("print('hi')");
+  });
+
+  it("does not throw for a plain fenced block with no language and still renders the code", () => {
+    const markdown = "```\nplain code\n```";
+    let rendered: string[] = [];
+    expect(() => {
+      rendered = renderMarkdownLines(markdown, 80);
+    }).not.toThrow();
+    expect(rendered.join("\n")).toContain("plain code");
+  });
+});
