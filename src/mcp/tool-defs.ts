@@ -123,6 +123,19 @@ export const NFO_TOOLS: NfoToolDef[] = [
     },
   },
   {
+    name: "report_state",
+    description:
+      "Called by a Musician DURING work to report current progress. Sets the Musician to 'working' (green in the Auditorium) and updates its free-form status line — a short note on what you are doing right now (e.g. \"running tests\", \"editing spawn.ts\"). Call it when you start and whenever your activity changes. This is NOT a handoff: use report_done to hand work back to the Orchestrator.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        detail: { type: "string" },
+      },
+      required: ["detail"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "note_write",
     description:
       "Write (or replace) a note file under the orchestra's notes/ directory.",
