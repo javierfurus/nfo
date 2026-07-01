@@ -1,27 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import { statusIcon, statusColor } from '../../src/tui/status-icon.js';
-import type { MusicianStatus } from '../../src/state.types.js';
 
-describe('statusIcon', () => {
-  it('maps each status to an icon', () => {
+describe('status-icon', () => {
+  it('maps working to a green filled dot', () => {
     expect(statusIcon('working')).toBe('●');
-    expect(statusIcon('idle')).toBe('◐');
-    expect(statusIcon('awaiting_permission')).toBe('⚠');
-    expect(statusIcon('stopped')).toBe('○');
+    expect(statusColor('working')).toBe('green');
   });
-});
-
-describe('statusColor', () => {
-  it('maps each status to an ink color name', () => {
-    const colors: Record<MusicianStatus, string> = {
-      working: statusColor('working'),
-      idle: statusColor('idle'),
-      awaiting_permission: statusColor('awaiting_permission'),
-      stopped: statusColor('stopped'),
-    };
-    expect(colors.working).toBe('green');
-    expect(colors.idle).toBe('yellow');
-    expect(colors.awaiting_permission).toBe('red');
-    expect(colors.stopped).toBe('gray');
+  it('maps waiting to a yellow half dot', () => {
+    expect(statusIcon('waiting')).toBe('◐');
+    expect(statusColor('waiting')).toBe('yellow');
+  });
+  it('maps idle to a gray hollow dot', () => {
+    expect(statusIcon('idle')).toBe('○');
+    expect(statusColor('idle')).toBe('gray');
+  });
+  it('maps awaiting_permission to a red warning', () => {
+    expect(statusIcon('awaiting_permission')).toBe('⚠');
+    expect(statusColor('awaiting_permission')).toBe('red');
+  });
+  it('maps stopped to a gray hollow dot', () => {
+    expect(statusIcon('stopped')).toBe('○');
+    expect(statusColor('stopped')).toBe('gray');
   });
 });
