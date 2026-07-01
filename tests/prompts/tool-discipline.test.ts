@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ORCHESTRATOR_ROLE_PROMPT_V1 } from '../../src/prompts/orchestrator-role.js';
 import { MUSICIAN_ROLE_PROMPT_V1 } from '../../src/prompts/musician-role.js';
-import { buildMusicianInitialPrompt } from '../../src/prompts/tool-discipline.js';
+import { MUSICIAN_TOOL_DISCIPLINE, buildMusicianInitialPrompt } from '../../src/prompts/tool-discipline.js';
 
 describe('tool-discipline prompts', () => {
   it('requires the orchestrator to resolve coordination via NFO tools', () => {
@@ -21,5 +21,15 @@ describe('tool-discipline prompts', () => {
     expect(prompt).toContain('Run the failing test and fix it.');
     expect(prompt).toContain('NFO operating contract (mandatory):');
     expect(prompt).toContain('instead of replying with a plain-text completion message');
+  });
+
+  it('instructs the musician to call report_state during work', () => {
+    expect(MUSICIAN_TOOL_DISCIPLINE).toContain('report_state');
+  });
+
+  it('mentions report_state in the per-task initial prompt', () => {
+    const prompt = buildMusicianInitialPrompt('do the thing');
+    expect(prompt).toContain('report_state');
+    expect(prompt).toContain('do the thing');
   });
 });
