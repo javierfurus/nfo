@@ -9,6 +9,8 @@ export interface NoteReaderProps {
   selectedFileIndex: number;
   fileContent: string;
   scrollOffset: number;
+  renderedLines?: string[];
+  visibleLines?: number;
 }
 
 export function NoteReader(props: NoteReaderProps): ReactElement {
@@ -39,15 +41,19 @@ export function NoteReader(props: NoteReaderProps): ReactElement {
     );
   }
 
-  const lines = props.fileContent.split("\n");
+  const lines =
+    props.renderedLines !== undefined
+      ? props.renderedLines
+      : props.fileContent.split("\n");
   const totalLines = lines.length;
+  const visible = props.visibleLines ?? NOTE_READER_VISIBLE_LINES;
   const visibleLines = lines.slice(
     props.scrollOffset,
-    props.scrollOffset + NOTE_READER_VISIBLE_LINES,
+    props.scrollOffset + visible,
   );
   const from = props.scrollOffset + 1;
   const to = Math.min(
-    props.scrollOffset + NOTE_READER_VISIBLE_LINES,
+    props.scrollOffset + visible,
     totalLines,
   );
   const filename = props.files[props.selectedFileIndex] ?? "";
@@ -60,13 +66,15 @@ export function NoteReader(props: NoteReaderProps): ReactElement {
       paddingX={1}
     >
       <Text bold={true}>{filename}</Text>
-      {visibleLines.map((line, i) => {
-        return (
-          <Text key={String(props.scrollOffset + i)} wrap="truncate-end">
-            {line || " "}
-          </Text>
-        );
-      })}
+      <Box flexDirection="column" flexGrow={1}>
+        {visibleLines.map((line, i) => {
+          return (
+            <Text key={String(props.scrollOffset + i)} wrap="truncate-end">
+              {line || " "}
+            </Text>
+          );
+        })}
+      </Box>
       <Text dimColor={true}>
         {from}–{to} / {totalLines} · ↑/↓ scroll · Esc back
       </Text>
