@@ -73,7 +73,7 @@ describe('MCP handlers dispatch', () => {
     expect(result.content).toBe('# hi');
   });
 
-  it('report_done sets status to idle and records summary', async () => {
+  it('report_done sets status to waiting and records summary', async () => {
     const { orchId } = await setup();
     const { musician_id } = await dispatch(orchId, 'spawn_musician', {
       name: 'r', task: 't', worktree: false,
@@ -83,7 +83,7 @@ describe('MCP handlers dispatch', () => {
     });
     expect(result.notified_orchestrator).toBe(true);
     const state = await readState(orchId);
-    expect(state!.musicians[0].status).toBe('idle');
+    expect(state!.musicians[0].status).toBe('waiting');
     expect(state!.musicians[0].latest_report).toMatchObject({
       summary: 'all green',
       next_steps: null,
