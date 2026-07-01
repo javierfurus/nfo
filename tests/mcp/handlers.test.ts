@@ -90,6 +90,22 @@ describe('MCP handlers dispatch', () => {
     });
   });
 
+  it('report_state sets status to working and stores a detail line', async () => {
+    const { orchId } = await setup();
+    const { musician_id } = await dispatch(orchId, 'spawn_musician', {
+      name: 'r', task: 't', worktree: false,
+    }, { dryRun: true });
+    const result = await dispatch(orchId, 'report_state', {
+      detail: 'editing spawn.ts', _from_musician_id: musician_id,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.detail).toBe('editing spawn.ts');
+    const state = await readState(orchId);
+    expect(state!.musicians[0].status).toBe('working');
+    expect(state!.musicians[0].detail).toBe('editing spawn.ts');
+    expect(typeof state!.musicians[0].last_state_report).toBe('string');
+  });
+
   it('report_done drains queued follow-up work onto the musician', async () => {
     const { orchId, repoPath } = await setup();
     const name = sessionName(orchId);
