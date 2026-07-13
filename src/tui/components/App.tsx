@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useApp,
   useBoxMetrics,
@@ -44,7 +44,7 @@ import { emitOsc52 } from "../clipboard.js";
 import type { CopyModeState, SelectionRange } from "../copy-mode.js";
 import { execa } from "execa";
 import { noteList, noteRead } from "../../notes.js";
-import { NOTE_READER_VISIBLE_LINES } from "./NoteReader.js";
+import { renderMarkdownLines } from "../markdown.js";
 import { dismissMusician } from "../../musicians/dismiss.js";
 import { reconcileMusicianLiveness } from "../../musicians/reconcile.js";
 import { readState } from "../../state.js";
@@ -77,6 +77,24 @@ export function App(props: AppProps): ReactElement {
   const [selectedNoteIndex, setSelectedNoteIndex] = useState(0);
   const [noteContent, setNoteContent] = useState("");
   const [noteScrollOffset, setNoteScrollOffset] = useState(0);
+
+  // NoteReader overlay is width="80%" with border(2) + paddingX(2) + NoteReader paddingX(2).
+  const noteContentWidth = Math.max(
+    40,
+    Math.floor(windowSize.columns * 0.8) - 6,
+  );
+  // NoteReader overlay is height="80%" with border(2) + paddingY(2) + NoteReader chrome(2).
+  const noteVisibleLines = Math.max(
+    1,
+    Math.floor(windowSize.rows * 0.8) - 6,
+  );
+  const noteRenderedLines = useMemo(() => {
+    if (noteContent === "") {
+      return [];
+    }
+    return renderMarkdownLines(noteContent, noteContentWidth);
+  }, [noteContent, noteContentWidth]);
+
   // C2: feed + errorMessage replace orchestratorSnapshot. Only one re-render when the
   // terminal is first created; pty output re-renders only OrchestratorPane.
   const [feed, setFeed] = useState<TerminalFeed | null>(null);
@@ -478,8 +496,10 @@ export function App(props: AppProps): ReactElement {
           setShowNoteReader(false);
         }
       } else {
-        const lines = noteContent.split("\n");
-        const maxOffset = Math.max(0, lines.length - NOTE_READER_VISIBLE_LINES);
+        const maxOffset = Math.max(
+          0,
+          noteRenderedLines.length - noteVisibleLines,
+        );
         if (key.upArrow || input === "k") {
           setNoteScrollOffset((prev) => {
             return Math.max(0, prev - 1);
@@ -807,6 +827,8 @@ export function App(props: AppProps): ReactElement {
       selectedNoteIndex={selectedNoteIndex}
       noteContent={noteContent}
       noteScrollOffset={noteScrollOffset}
+      noteRenderedLines={noteRenderedLines}
+      noteVisibleLines={noteVisibleLines}
       feed={feed}
       activeMusicianName={activePaneMusician?.name ?? null}
       errorMessage={errorMessage}

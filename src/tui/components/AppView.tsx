@@ -32,6 +32,8 @@ export interface AppViewProps {
   selectedNoteIndex?: number;
   noteContent?: string;
   noteScrollOffset?: number;
+  noteRenderedLines?: string[];
+  noteVisibleLines?: number;
   feed: TerminalFeed | null;
   activeMusicianName: string | null;
   errorMessage: string | null;
@@ -141,6 +143,8 @@ export function AppView(props: AppViewProps): ReactElement {
                 selectedFileIndex={props.selectedNoteIndex ?? 0}
                 fileContent={props.noteContent ?? ""}
                 scrollOffset={props.noteScrollOffset ?? 0}
+                renderedLines={props.noteRenderedLines}
+                visibleLines={props.noteVisibleLines}
               />
             </Box>
           </Box>
