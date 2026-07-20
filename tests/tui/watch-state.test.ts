@@ -3,7 +3,7 @@ import { watchOrchestraState } from '../../src/tui/watch-state.js';
 import { makeTmpConfig } from '../helpers/tmp-config.js';
 import { ensureOrchestraDir, writeState } from '../../src/state.js';
 import { makeInitialState } from '../../src/state.types.js';
-import { setOrchestratorSessionId } from '../../src/state-updaters.js';
+import { addMusician } from '../../src/state-updaters.js';
 import type { OrchestraState } from '../../src/state.types.js';
 
 describe('watchOrchestraState', () => {
@@ -37,9 +37,20 @@ describe('watchOrchestraState', () => {
     expect(seen[0].orchestra_id).toBe('orch-w');
 
     // mutate → expect another emit
-    await setOrchestratorSessionId('orch-w', 'sess-123');
-    await waitFor(() => { return seen.some((s) => { return s.orchestrator_session_id === 'sess-123'; }); }, 4000);
-    expect(seen.some((s) => { return s.orchestrator_session_id === 'sess-123'; })).toBe(true);
+    await addMusician('orch-w', {
+      id: 'mus-001',
+      name: 'tester',
+      task_summary: 't',
+      status: 'working',
+      tmux_window_id: '@1',
+      claude_session_id: null,
+      worktree_path: null,
+      branch: null,
+      spawned_at: '2026-07-01T00:00:00Z',
+      last_activity: '2026-07-01T00:00:00Z',
+    });
+    await waitFor(() => { return seen.some((s) => { return s.musicians.length === 1; }); }, 4000);
+    expect(seen.some((s) => { return s.musicians.length === 1; })).toBe(true);
   });
 });
 

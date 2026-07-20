@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 export const STATE_VERSION = 1;
 export const STATE_FILENAME = 'state.json';
+export const STATE_DB_FILENAME = 'state.db';
 export const NOTES_DIRNAME = 'notes';
 export const LOGS_DIRNAME = 'logs';
 export const MESSAGE_LOGS_DIRNAME = 'messages';
@@ -27,6 +28,9 @@ export const orchestraDir = (projectKey: string): string =>
 
 export const stateFile = (projectKey: string): string =>
   join(orchestraDir(projectKey), STATE_FILENAME);
+
+export const stateDbFile = (projectKey: string): string =>
+  join(orchestraDir(projectKey), STATE_DB_FILENAME);
 
 export const notesDir = (projectKey: string): string =>
   join(orchestraDir(projectKey), NOTES_DIRNAME);
