@@ -1,14 +1,13 @@
 import { createInterface } from 'node:readline/promises';
-import { rename, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { readState } from '../state.js';
+import { deleteState, readState } from '../state.js';
 import {
   sessionName,
   sessionExists,
   killSession,
 } from '../tmux.js';
-import { archiveDir, stateFile } from '../config.js';
+import { archiveDir } from '../config.js';
 
 export interface KillOptions {
   yes?: boolean;  // skip confirmation prompt
@@ -41,10 +40,10 @@ export async function killOrchestra(orchestraId: string, opts: KillOptions = {})
     await killSession(name);
   }
 
-  // Archive state.json under archive/state-<timestamp>.json so notes/ stays intact.
+  // Archive a snapshot of the state under archive/state-<timestamp>.json so
+  // notes/ stays intact, then remove the orchestra from the state DB.
   await mkdir(archiveDir(orchestraId), { recursive: true });
   const archived = join(archiveDir(orchestraId), `state-${Date.now()}.json`);
-  if (existsSync(stateFile(orchestraId))) {
-    await rename(stateFile(orchestraId), archived);
-  }
+  await writeFile(archived, JSON.stringify(state, null, 2), 'utf8');
+  deleteState(orchestraId);
 }

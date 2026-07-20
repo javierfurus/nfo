@@ -4,7 +4,7 @@ import { execa } from 'execa';
 import { reconcileMusicianLiveness } from '../../src/musicians/reconcile.js';
 import { readState, writeState, ensureOrchestraDir } from '../../src/state.js';
 import { makeInitialState, type Musician } from '../../src/state.types.js';
-import { stateFile } from '../../src/config.js';
+import { stateDbFile } from '../../src/config.js';
 import { makeTmpConfig } from '../helpers/tmp-config.js';
 import { makeTmpRepo } from '../helpers/tmp-repo.js';
 import { projectKeyFromPath } from '../../src/project-key.js';
@@ -163,9 +163,9 @@ describe('reconcileMusicianLiveness', () => {
     state.musicians.push(makeMus({ id: 'mus-001', status: 'working', tmux_window_id: liveId }));
     await writeState(orchId, state);
 
-    const { mtimeMs: before } = statSync(stateFile(orchId));
+    const { mtimeMs: before } = statSync(stateDbFile(orchId));
     await reconcileMusicianLiveness(orchId);
-    const { mtimeMs: after } = statSync(stateFile(orchId));
+    const { mtimeMs: after } = statSync(stateDbFile(orchId));
 
     expect(after).toBe(before);
   });

@@ -3,8 +3,6 @@ import {
   addMusician,
   setMusicianStatus,
   archiveMusician,
-  setOrchestratorSessionId,
-  setMusicianClaudeSessionId,
   setMusicianTmuxWindowId,
   touchMusicianActivity,
   setMusicianState,
@@ -81,21 +79,6 @@ describe('state updaters', () => {
     expect(state!.archived_musicians[0].dismissed_at).toBe('2026-05-29T11:00:00Z');
     expect(state!.archived_musicians[0].summary).toBe('done');
     expect(state!.archived_musicians[0].status).toBe('stopped');
-  });
-
-  it('setOrchestratorSessionId records the session id', async () => {
-    await freshState('orch-d');
-    await setOrchestratorSessionId('orch-d', 'sess-abc');
-    const state = await readState('orch-d');
-    expect(state!.orchestrator_session_id).toBe('sess-abc');
-  });
-
-  it('setMusicianClaudeSessionId records the session id', async () => {
-    await freshState('orch-e');
-    await addMusician('orch-e', baseMus('mus-001'));
-    await setMusicianClaudeSessionId('orch-e', 'mus-001', 'sess-xyz');
-    const state = await readState('orch-e');
-    expect(state!.musicians[0].claude_session_id).toBe('sess-xyz');
   });
 
   it('touchMusicianActivity updates last_activity', async () => {

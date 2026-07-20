@@ -1,16 +1,13 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import lockfile from 'proper-lockfile';
+import { mkdir } from 'node:fs/promises';
 import {
   notesDir,
   logsDir,
   messageLogsDir,
   worktreesDir,
   archiveDir,
-  stateFile,
   orchestraDir,
 } from './config.js';
+import { deleteOrchestraState, openDb, runInWriteTransaction, selectOrchestraState, upsertOrchestraState } from './db.js';
 import type { OrchestraState } from './state.types.js';
 
 export async function ensureOrchestraDir(projectKey: string): Promise<void> {
@@ -22,28 +19,21 @@ export async function ensureOrchestraDir(projectKey: string): Promise<void> {
   await mkdir(archiveDir(projectKey), { recursive: true });
 }
 
-export async function readState(projectKey: string): Promise<OrchestraState | null> {
-  const file = stateFile(projectKey);
-  if (!existsSync(file)) return null;
-  const buf = await readFile(file, 'utf8');
-  return JSON.parse(buf) as OrchestraState;
+export function readState(projectKey: string): OrchestraState | null {
+  const db = openDb(projectKey);
+  return selectOrchestraState(db, projectKey);
 }
 
-export async function writeState(projectKey: string, state: OrchestraState): Promise<void> {
-  const file = stateFile(projectKey);
-  await mkdir(dirname(file), { recursive: true });
+export function writeState(projectKey: string, state: OrchestraState): void {
+  const db = openDb(projectKey);
+  runInWriteTransaction(db, () => {
+    upsertOrchestraState(db, projectKey, state);
+  });
+}
 
-  // proper-lockfile needs the target file to exist before it can lock it.
-  if (!existsSync(file)) {
-    await writeFile(file, '{}', 'utf8');
-  }
-
-  const release = await lockfile.lock(file, { retries: { retries: 5, minTimeout: 50 } });
-  try {
-    const tmp = `${file}.tmp.${process.pid}.${Date.now()}`;
-    await writeFile(tmp, JSON.stringify(state, null, 2), 'utf8');
-    await rename(tmp, file);
-  } finally {
-    await release();
-  }
+export function deleteState(projectKey: string): void {
+  const db = openDb(projectKey);
+  runInWriteTransaction(db, () => {
+    deleteOrchestraState(db, projectKey);
+  });
 }
