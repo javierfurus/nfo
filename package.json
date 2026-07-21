@@ -36,7 +36,6 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@xterm/headless": "^6.0.0",
     "better-sqlite3": "^12.11.1",
-    "chokidar": "^5.0.0",
     "commander": "^12.0.0",
     "execa": "^9.0.0",
     "ink": "^7.0.5",

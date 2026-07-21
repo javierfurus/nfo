@@ -16,7 +16,6 @@ import {
 } from "../poll-idle.js";
 import { pollPermissions } from "../poll-permission.js";
 import { setMusicianStatus } from "../../state-updaters.js";
-import { watchOrchestraState, type StopWatching } from "../watch-state.js";
 import { listOrchestras, type OrchestraSummary } from "../../commands/list.js";
 import { EmbeddedTerminal, type TerminalFeed } from "../embedded-terminal.js";
 import {
@@ -133,18 +132,20 @@ export function App(props: AppProps): ReactElement {
     };
   }, []);
 
-  // Watch state.json.
+  // Poll the orchestra state from the DB every 1s.
   useEffect(() => {
-    let stop: StopWatching | undefined;
-    void watchOrchestraState(props.orchestraId, (s) => {
-      setState(s);
-    }).then((fn) => {
-      stop = fn;
-    });
-    return () => {
-      if (stop) {
-        void stop();
+    const tick = async (): Promise<void> => {
+      const s = await readState(props.orchestraId);
+      if (s) {
+        setState(s);
       }
+    };
+    void tick();
+    const timer = setInterval(() => {
+      void tick();
+    }, 1000);
+    return () => {
+      clearInterval(timer);
     };
   }, [props.orchestraId]);
 
