@@ -48,6 +48,7 @@ import { reconcileMusicianLiveness } from "../../musicians/reconcile.js";
 import { readState } from "../../state.js";
 import { notifyAwaitingPermission } from "../../notify.js";
 import type { Musician, OrchestraState } from "../../state.types.js";
+import { computeSidebarVisible } from "../sidebar-visibility.js";
 
 export interface AppProps {
   orchestraId: string;
@@ -101,6 +102,7 @@ export function App(props: AppProps): ReactElement {
     string | null
   >(null);
   const [orchestratorFocused, setOrchestratorFocused] = useState(false);
+  const [autoHideMode, setAutoHideMode] = useState(false);
   const [copyMode, setCopyMode] = useState<CopyModeState>("off");
   const [selection, setSelection] = useState<SelectionRange | null>(null);
   const [lazygitInstalled, setLazygitInstalled] = useState(false);
@@ -643,6 +645,13 @@ export function App(props: AppProps): ReactElement {
       return;
     }
 
+    if (key.ctrl && input.toLowerCase() === "b") {
+      setAutoHideMode((v) => {
+        return !v;
+      });
+      return;
+    }
+
     if (orchestratorFocused) {
       if (key.ctrl && input.toLowerCase() === "g") {
         setOrchestratorFocused(false);
@@ -799,6 +808,12 @@ export function App(props: AppProps): ReactElement {
     });
   }, [musicians.length]);
 
+  const sidebarVisible = computeSidebarVisible({
+    autoHideMode,
+    columns: windowSize.columns,
+    orchestratorFocused,
+  });
+
   const permissionLevel = state ? state.permission_level : "…";
   const pendingCount = musicians.filter((m) => {
     return m.status === "awaiting_permission";
@@ -835,6 +850,7 @@ export function App(props: AppProps): ReactElement {
       activeMusicianName={activePaneMusician?.name ?? null}
       errorMessage={errorMessage}
       orchestratorFocused={orchestratorFocused}
+      sidebarVisible={sidebarVisible}
       activeMusicianId={activePaneMusician?.id ?? null}
       orchestratorActive={activePaneMusician === null}
       version={props.version}

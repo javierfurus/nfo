@@ -30,11 +30,13 @@ export function StatusBar(props: StatusBarProps): ReactElement {
         {props.permissionLevel} · {props.tokenHint}
       </Text>
       {props.orchestratorFocused ? (
-        <Text dimColor={true}>[type] active terminal [Ctrl+g] sidebar</Text>
+        <Text dimColor={true}>
+          [type] active terminal [Ctrl+g] sidebar [Ctrl+b] sidebar auto-hide
+        </Text>
       ) : (
         <Text dimColor={true}>
           [↑↓] nav [⏎] open left pane [d] dismiss [p] pending [n] notes{props.lazygitInstalled === true ? " [g] lazygit" : ""} [Ctrl+g]
-          terminal
+          terminal [Ctrl+b] sidebar auto-hide
         </Text>
       )}
       <Text dimColor={true}>[q] detach [?] help</Text>
