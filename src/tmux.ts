@@ -110,6 +110,24 @@ export async function sendKeys(target: string, text: string, withEnter: boolean)
   }
 }
 
+let pasteBufferCounter = 0;
+
+export async function pasteText(target: string, text: string, withEnter: boolean): Promise<void> {
+  // send-keys passes text as a single execve argv element, which Linux caps at
+  // MAX_ARG_STRLEN (~128KB); large reports/messages hit E2BIG. load-buffer reads
+  // text from stdin instead, so there is no argv size limit. Deliberately no -p
+  // (bracketed paste) on paste-buffer: the raw paste is byte-identical to what
+  // send-keys -l already produces, so the receiving Claude TUI sees no new
+  // behavior. -d cleans up the buffer immediately after paste.
+  pasteBufferCounter += 1;
+  const bufferName = `nfo-paste-${process.pid}-${pasteBufferCounter}`;
+  await execa('tmux', ['load-buffer', '-b', bufferName, '-'], { input: text });
+  await execa('tmux', ['paste-buffer', '-d', '-b', bufferName, '-t', target]);
+  if (withEnter) {
+    await execa('tmux', ['send-keys', '-t', target, 'Enter']);
+  }
+}
+
 export async function respawnPane(target: string, command: string): Promise<void> {
   await execa('tmux', ['respawn-pane', '-k', '-t', target, command]);
 }

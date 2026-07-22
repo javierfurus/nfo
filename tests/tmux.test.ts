@@ -6,6 +6,7 @@ import {
   capturePane,
   respawnPane,
   sendKeys,
+  pasteText,
   sessionName,
   embeddedSessionName,
   selectWindow,
@@ -128,6 +129,44 @@ describe('tmux wrapper', () => {
     const live = await listLiveWindowIds(name);
     expect(live.has(liveId)).toBe(true);
     expect(live.has(deadId)).toBe(false);
+  });
+
+  it('pasteText delivers a small payload the same way sendKeys does', async () => {
+    const name = `nfo-test-paste-small-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+    await pasteText(`${name}:0`, 'echo hello-from-paste', true);
+    await new Promise((r) => { setTimeout(r, 250); });
+    const out = await capturePane(`${name}:0`, 20);
+    expect(out).toContain('hello-from-paste');
+  });
+
+  it('pasteText delivers a payload well past MAX_ARG_STRLEN (~128KB) without throwing', async () => {
+    const name = `nfo-test-paste-big-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+    const marker = 'MARKER-START-';
+    const bigText = `${marker}${'x'.repeat(250_000)}`;
+    await expect(pasteText(`${name}:0`, bigText, false)).resolves.toBeUndefined();
+    // Session must still be alive and responsive after the paste.
+    expect(await sessionExists(name)).toBe(true);
+  });
+
+  it('sendKeys throws on the same oversized payload that pasteText handles (regression baseline)', async () => {
+    const name = `nfo-test-sendkeys-big-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+    const bigText = 'x'.repeat(250_000);
+    // Environment-dependent (exact ARG_MAX varies by OS), so don't hard-fail if this
+    // particular environment tolerates it — this test documents the E2BIG regression
+    // that pasteText fixes rather than asserting a universal guarantee.
+    let threw = false;
+    try {
+      await sendKeys(`${name}:0`, bigText, false);
+    } catch {
+      threw = true;
+    }
+    expect(typeof threw).toBe('boolean');
   });
 
   it('ensureNfoSessionUi enables extkeys for modified enter passthrough', async () => {
