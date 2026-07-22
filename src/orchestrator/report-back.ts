@@ -1,4 +1,4 @@
-import { sendKeys, sessionName } from '../tmux.js';
+import { pasteText, sessionName } from '../tmux.js';
 
 export interface MusicianDoneReport {
   musicianId: string;
@@ -29,5 +29,5 @@ export async function notifyOrchestratorOfDoneReport(
   orchestraId: string,
   report: MusicianDoneReport,
 ): Promise<void> {
-  await sendKeys(`${sessionName(orchestraId)}:0`, formatMusicianDonePrompt(report), true);
+  await pasteText(`${sessionName(orchestraId)}:0`, formatMusicianDonePrompt(report), true);
 }

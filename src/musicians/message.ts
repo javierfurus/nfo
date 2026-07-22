@@ -1,4 +1,4 @@
-import { sendKeys, sessionName } from '../tmux.js';
+import { pasteText, sessionName } from '../tmux.js';
 import { readState } from '../state.js';
 import type { MusicianStatus } from '../state.types.js';
 import { findMusicianStrict } from './lookup.js';
@@ -49,7 +49,7 @@ async function deliverPendingMessages(
 
   const target = `${sessionName(orchestraId)}:${musician.tmux_window_id}`;
   const message = formatQueuedMusicianMessages(pending);
-  await sendKeys(target, message, true);
+  await pasteText(target, message, true);
 
   const deliveredAt = new Date().toISOString();
   for (const pendingMessage of pending) {
