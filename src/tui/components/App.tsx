@@ -34,6 +34,7 @@ import {
   embeddedSessionName,
   ensureEmbeddedSession,
   killSession,
+  reapOrphanEmbeddedSessions,
   selectWindow,
   sessionName,
   setSessionOption,
@@ -333,12 +334,8 @@ export function App(props: AppProps): ReactElement {
         setFeed(null);
         setErrorMessage(null);
         await runEmbeddedSessionOperation(embedSession, async () => {
-          await killSession(embedSession);
+          await reapOrphanEmbeddedSessions(props.orchestraId);
           await ensureEmbeddedSession(session, embedSession, projectPath);
-
-          if (!embeddedSessionLeaseIsCurrent(embeddedSessionLease)) {
-            await killSession(embedSession);
-          }
         });
         if (disposed || !embeddedSessionLeaseIsCurrent(embeddedSessionLease)) {
           return;
