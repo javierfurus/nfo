@@ -29,6 +29,11 @@ const ROWS: Row[] = [
     label: "switch focus between the sidebar and the embedded Claude terminal",
   },
   {
+    key: "Ctrl+b",
+    label:
+      "toggle right-sidebar auto-hide (hides the sidebar while the Claude terminal is focused; Ctrl+g still peeks it)",
+  },
+  {
     key: "typed keys",
     label:
       "go directly to the currently open tmux terminal while the left pane is focused",

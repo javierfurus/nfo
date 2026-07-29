@@ -1,4 +1,4 @@
-import { readState, writeState } from './state.js';
+import { openDb, runInWriteTransaction, selectOrchestraState, upsertOrchestraState } from './db.js';
 import type {
   ArchivedMusician,
   Musician,
@@ -7,29 +7,29 @@ import type {
   OrchestraState,
 } from './state.types.js';
 
-async function update(
-  orchestraId: string,
-  mutator: (s: OrchestraState) => void,
-): Promise<void> {
-  const state = await readState(orchestraId);
-  if (!state) {
-    throw new Error(`Unknown orchestra: ${orchestraId}`);
-  }
-  mutator(state);
-  await writeState(orchestraId, state);
+function update(orchestraId: string, mutator: (s: OrchestraState) => void): void {
+  const db = openDb(orchestraId);
+  runInWriteTransaction(db, () => {
+    const state = selectOrchestraState(db, orchestraId);
+    if (!state) {
+      throw new Error(`Unknown orchestra: ${orchestraId}`);
+    }
+    mutator(state);
+    upsertOrchestraState(db, orchestraId, state);
+  });
 }
 
-export async function addMusician(orchestraId: string, m: Musician): Promise<void> {
-  await update(orchestraId, (s) => { s.musicians.push(m); });
+export function addMusician(orchestraId: string, m: Musician): void {
+  update(orchestraId, (s) => { s.musicians.push(m); });
 }
 
-export async function setMusicianStatus(
+export function setMusicianStatus(
   orchestraId: string,
   musicianId: string,
   status: MusicianStatus,
   pendingPermission?: string | null,
-): Promise<void> {
-  await update(orchestraId, (s) => {
+): void {
+  update(orchestraId, (s) => {
     const m = s.musicians.find((mu) => { return mu.id === musicianId; });
     if (!m) {
       throw new Error(`Unknown musician: ${musicianId}`);
@@ -41,26 +41,12 @@ export async function setMusicianStatus(
   });
 }
 
-export async function setMusicianClaudeSessionId(
-  orchestraId: string,
-  musicianId: string,
-  sessionId: string,
-): Promise<void> {
-  await update(orchestraId, (s) => {
-    const m = s.musicians.find((mu) => { return mu.id === musicianId; });
-    if (!m) {
-      throw new Error(`Unknown musician: ${musicianId}`);
-    }
-    m.claude_session_id = sessionId;
-  });
-}
-
-export async function setMusicianTmuxWindowId(
+export function setMusicianTmuxWindowId(
   orchestraId: string,
   musicianId: string,
   tmuxWindowId: string,
-): Promise<void> {
-  await update(orchestraId, (s) => {
+): void {
+  update(orchestraId, (s) => {
     const m = s.musicians.find((mu) => { return mu.id === musicianId; });
     if (!m) {
       throw new Error(`Unknown musician: ${musicianId}`);
@@ -69,13 +55,13 @@ export async function setMusicianTmuxWindowId(
   });
 }
 
-export async function touchMusicianActivity(
+export function touchMusicianActivity(
   orchestraId: string,
   musicianId: string,
   timestamp?: string,
-): Promise<void> {
+): void {
   const ts = timestamp ?? new Date().toISOString();
-  await update(orchestraId, (s) => {
+  update(orchestraId, (s) => {
     const m = s.musicians.find((mu) => { return mu.id === musicianId; });
     if (!m) {
       throw new Error(`Unknown musician: ${musicianId}`);
@@ -84,12 +70,12 @@ export async function touchMusicianActivity(
   });
 }
 
-export async function setMusicianLatestReport(
+export function setMusicianLatestReport(
   orchestraId: string,
   musicianId: string,
   report: MusicianReport | null,
-): Promise<void> {
-  await update(orchestraId, (s) => {
+): void {
+  update(orchestraId, (s) => {
     const m = s.musicians.find((mu) => { return mu.id === musicianId; });
     if (!m) {
       throw new Error(`Unknown musician: ${musicianId}`);
@@ -98,11 +84,34 @@ export async function setMusicianLatestReport(
   });
 }
 
-export async function setOrchestratorSessionId(
+const MAX_DETAIL_LEN = 100;
+
+export function truncateDetail(detail: string): string {
+  if (detail.length > MAX_DETAIL_LEN) {
+    return detail.slice(0, MAX_DETAIL_LEN - 1) + '…';
+  }
+  return detail;
+}
+
+export function setMusicianState(
   orchestraId: string,
-  sessionId: string,
-): Promise<void> {
-  await update(orchestraId, (s) => { s.orchestrator_session_id = sessionId; });
+  musicianId: string,
+  detail: string,
+  timestamp?: string,
+): string {
+  const ts = timestamp ?? new Date().toISOString();
+  const stored = truncateDetail(detail);
+  update(orchestraId, (s) => {
+    const m = s.musicians.find((mu) => { return mu.id === musicianId; });
+    if (!m) {
+      throw new Error(`Unknown musician: ${musicianId}`);
+    }
+    m.status = 'working';
+    m.detail = stored;
+    m.last_state_report = ts;
+    m.last_activity = ts;
+  });
+  return stored;
 }
 
 export interface ArchiveArgs {
@@ -110,12 +119,12 @@ export interface ArchiveArgs {
   dismissedAt?: string;
 }
 
-export async function archiveMusician(
+export function archiveMusician(
   orchestraId: string,
   musicianId: string,
   args: ArchiveArgs,
-): Promise<void> {
-  await update(orchestraId, (s) => {
+): void {
+  update(orchestraId, (s) => {
     const idx = s.musicians.findIndex((mu) => { return mu.id === musicianId; });
     if (idx === -1) {
       throw new Error(`Unknown musician: ${musicianId}`);

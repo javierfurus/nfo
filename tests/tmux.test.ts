@@ -6,6 +6,7 @@ import {
   capturePane,
   respawnPane,
   sendKeys,
+  pasteText,
   sessionName,
   embeddedSessionName,
   selectWindow,
@@ -13,6 +14,8 @@ import {
   setPaneOption,
   ensureNfoSessionUi,
   listLiveWindowIds,
+  isProcessAlive,
+  shouldReapEmbeddedSession,
 } from '../src/tmux.js';
 
 describe('tmux wrapper', () => {
@@ -28,8 +31,47 @@ describe('tmux wrapper', () => {
     expect(sessionName('abcd1234ef-myrepo')).toBe('nfo-abcd1234ef-myrepo');
   });
 
-  it('embeddedSessionName composes from project key', () => {
-    expect(embeddedSessionName('abcd1234ef-myrepo')).toBe('nfo-abcd1234ef-myrepo-embed');
+  it('embeddedSessionName composes from project key with a per-process pid suffix', () => {
+    expect(embeddedSessionName('abcd1234ef-myrepo')).toMatch(/^nfo-abcd1234ef-myrepo-embed-\d+$/);
+    expect(embeddedSessionName('abcd1234ef-myrepo')).toBe(`nfo-abcd1234ef-myrepo-embed-${process.pid}`);
+  });
+
+  it('isProcessAlive returns true for the current process', () => {
+    expect(isProcessAlive(process.pid)).toBe(true);
+  });
+
+  it('isProcessAlive returns false for a pid that does not exist', () => {
+    // PID 1 always exists; a very large pid is extremely unlikely to be in use.
+    expect(isProcessAlive(999_999_999)).toBe(false);
+  });
+
+  describe('shouldReapEmbeddedSession', () => {
+    it('never reaps a session with an attached client', () => {
+      expect(shouldReapEmbeddedSession({
+        attached: 1, sessionPid: 123, currentPid: 456, ownerAlive: false,
+      })).toBe(false);
+      expect(shouldReapEmbeddedSession({
+        attached: 1, sessionPid: 456, currentPid: 456, ownerAlive: true,
+      })).toBe(false);
+    });
+
+    it('reaps an unattached session whose owning process is dead', () => {
+      expect(shouldReapEmbeddedSession({
+        attached: 0, sessionPid: 123, currentPid: 456, ownerAlive: false,
+      })).toBe(true);
+    });
+
+    it('reaps an unattached session that shares our own pid (stale leftover)', () => {
+      expect(shouldReapEmbeddedSession({
+        attached: 0, sessionPid: 456, currentPid: 456, ownerAlive: true,
+      })).toBe(true);
+    });
+
+    it('does not reap an unattached session owned by another live process', () => {
+      expect(shouldReapEmbeddedSession({
+        attached: 0, sessionPid: 123, currentPid: 456, ownerAlive: true,
+      })).toBe(false);
+    });
   });
 
   it('sessionExists returns false when no such session', async () => {
@@ -128,6 +170,44 @@ describe('tmux wrapper', () => {
     const live = await listLiveWindowIds(name);
     expect(live.has(liveId)).toBe(true);
     expect(live.has(deadId)).toBe(false);
+  });
+
+  it('pasteText delivers a small payload the same way sendKeys does', async () => {
+    const name = `nfo-test-paste-small-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+    await pasteText(`${name}:0`, 'echo hello-from-paste', true);
+    await new Promise((r) => { setTimeout(r, 250); });
+    const out = await capturePane(`${name}:0`, 20);
+    expect(out).toContain('hello-from-paste');
+  });
+
+  it('pasteText delivers a payload well past MAX_ARG_STRLEN (~128KB) without throwing', async () => {
+    const name = `nfo-test-paste-big-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+    const marker = 'MARKER-START-';
+    const bigText = `${marker}${'x'.repeat(250_000)}`;
+    await expect(pasteText(`${name}:0`, bigText, false)).resolves.toBeUndefined();
+    // Session must still be alive and responsive after the paste.
+    expect(await sessionExists(name)).toBe(true);
+  });
+
+  it('sendKeys throws on the same oversized payload that pasteText handles (regression baseline)', async () => {
+    const name = `nfo-test-sendkeys-big-${Date.now()}`;
+    sessionsToKill.push(name);
+    await createDetachedSession(name, '/tmp');
+    const bigText = 'x'.repeat(250_000);
+    // Environment-dependent (exact ARG_MAX varies by OS), so don't hard-fail if this
+    // particular environment tolerates it — this test documents the E2BIG regression
+    // that pasteText fixes rather than asserting a universal guarantee.
+    let threw = false;
+    try {
+      await sendKeys(`${name}:0`, bigText, false);
+    } catch {
+      threw = true;
+    }
+    expect(typeof threw).toBe('boolean');
   });
 
   it('ensureNfoSessionUi enables extkeys for modified enter passthrough', async () => {

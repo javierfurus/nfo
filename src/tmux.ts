@@ -14,7 +14,7 @@ export function sessionName(projectKey: string): string {
 }
 
 export function embeddedSessionName(projectKey: string): string {
-  return `${sessionName(projectKey)}${EMBED_SESSION_SUFFIX}`;
+  return `${sessionName(projectKey)}${EMBED_SESSION_SUFFIX}-${process.pid}`;
 }
 
 export async function sessionExists(name: string): Promise<boolean> {
@@ -61,6 +61,10 @@ export async function killSession(name: string): Promise<void> {
   await execa('tmux', ['kill-session', '-t', name], { reject: false });
 }
 
+export async function setDestroyUnattached(sessionName: string, on = true): Promise<void> {
+  await execa('tmux', ['set-option', '-t', sessionName, 'destroy-unattached', on ? 'on' : 'off'], { reject: false });
+}
+
 export async function createLinkedSession(
   sourceSession: string,
   linkedSession: string,
@@ -79,6 +83,76 @@ export async function ensureEmbeddedSession(
   }
   await ensureNfoSessionUi(linkedSession);
   await selectWindow(linkedSession, '0');
+}
+
+export function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ESRCH') {
+      return false;
+    }
+    return true;
+  }
+}
+
+export interface ShouldReapEmbeddedSessionParams {
+  attached: number;
+  sessionPid: number;
+  currentPid: number;
+  ownerAlive: boolean;
+}
+
+export function shouldReapEmbeddedSession(params: ShouldReapEmbeddedSessionParams): boolean {
+  if (params.attached > 0) {
+    return false;
+  }
+  if (params.sessionPid === params.currentPid) {
+    return true;
+  }
+  return !params.ownerAlive;
+}
+
+export async function reapOrphanEmbeddedSessions(projectKey: string): Promise<void> {
+  const prefix = `${sessionName(projectKey)}${EMBED_SESSION_SUFFIX}-`;
+  const result = await execa(
+    'tmux',
+    ['list-sessions', '-F', '#{session_name}:#{session_attached}'],
+    { reject: false },
+  );
+  if (result.exitCode !== 0 || !result.stdout) {
+    return;
+  }
+
+  for (const line of result.stdout.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith(prefix)) {
+      continue;
+    }
+    const lastColon = trimmed.lastIndexOf(':');
+    if (lastColon === -1) {
+      continue;
+    }
+    const name = trimmed.slice(0, lastColon);
+    const attached = Number.parseInt(trimmed.slice(lastColon + 1), 10);
+    const pidText = name.slice(prefix.length);
+    const sessionPid = Number.parseInt(pidText, 10);
+    if (Number.isNaN(attached) || Number.isNaN(sessionPid)) {
+      continue;
+    }
+
+    const shouldReap = shouldReapEmbeddedSession({
+      attached,
+      sessionPid,
+      currentPid: process.pid,
+      ownerAlive: isProcessAlive(sessionPid),
+    });
+    if (shouldReap) {
+      await killSession(name);
+    }
+  }
 }
 
 export async function attachSession(name: string): Promise<void> {
@@ -105,6 +179,24 @@ export async function splitWindowHorizontal(
 export async function sendKeys(target: string, text: string, withEnter: boolean): Promise<void> {
   // Use -l (literal) to avoid keystroke interpretation.
   await execa('tmux', ['send-keys', '-l', '-t', target, '--', text]);
+  if (withEnter) {
+    await execa('tmux', ['send-keys', '-t', target, 'Enter']);
+  }
+}
+
+let pasteBufferCounter = 0;
+
+export async function pasteText(target: string, text: string, withEnter: boolean): Promise<void> {
+  // send-keys passes text as a single execve argv element, which Linux caps at
+  // MAX_ARG_STRLEN (~128KB); large reports/messages hit E2BIG. load-buffer reads
+  // text from stdin instead, so there is no argv size limit. Deliberately no -p
+  // (bracketed paste) on paste-buffer: the raw paste is byte-identical to what
+  // send-keys -l already produces, so the receiving Claude TUI sees no new
+  // behavior. -d cleans up the buffer immediately after paste.
+  pasteBufferCounter += 1;
+  const bufferName = `nfo-paste-${process.pid}-${pasteBufferCounter}`;
+  await execa('tmux', ['load-buffer', '-b', bufferName, '-'], { input: text });
+  await execa('tmux', ['paste-buffer', '-d', '-b', bufferName, '-t', target]);
   if (withEnter) {
     await execa('tmux', ['send-keys', '-t', target, 'Enter']);
   }

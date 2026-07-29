@@ -2,6 +2,7 @@ import type { PermissionLevel } from "./permission.js";
 
 export type MusicianStatus =
   | "working"
+  | "waiting"
   | "idle"
   | "awaiting_permission"
   | "stopped";
@@ -27,6 +28,8 @@ export interface Musician {
   last_activity: string;
   latest_report?: MusicianReport | null;
   model?: SubagentModel;
+  detail?: string | null;
+  last_state_report?: string | null;
 }
 
 export interface ArchivedMusician extends Musician {

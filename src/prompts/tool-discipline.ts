@@ -24,6 +24,10 @@ export const MUSICIAN_TOOL_DISCIPLINE = `Tool discipline (mandatory):
 
 - Use NFO MCP tools for orchestra coordination. Plain-text status reports are
   not a valid handoff.
+- While working, call \`report_state({ detail })\` to report progress — a short
+  note on what you are doing right now (e.g. "running tests", "editing spawn.ts").
+  Call it when you start and whenever your activity changes. This drives the live
+  Auditorium display and is NOT a substitute for \`report_done\`.
 - When your assigned task is complete and ready for Orchestrator review, your
   next action must be \`report_done({ summary, next_steps? })\`.
 - Do not end with "done", "finished", or similar prose instead of calling
@@ -40,6 +44,7 @@ export function buildMusicianInitialPrompt(task: string): string {
 
 NFO operating contract (mandatory):
 - Use the NFO MCP tools for orchestra coordination.
+- While working, call \`report_state({ detail })\` with a short note on what you are doing now, and update it when your activity changes.
 - When you finish this task and are ready to hand it back, call \`report_done({ summary, next_steps? })\` instead of replying with a plain-text completion message.
 - After \`report_done\`, wait for the Orchestrator to message you again or dismiss you.`;
 }

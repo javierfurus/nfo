@@ -104,6 +104,60 @@ describe('messageMusician', () => {
     expect(log).toContain('"type":"message_delivered"');
   });
 
+  it("sends keys + Enter immediately when the musician is waiting (post-report_done)", async () => {
+    const cfg = await makeTmpConfig();
+    cleanups.push(cfg.cleanup);
+    process.env.NFO_HOME = cfg.path;
+    const repo: TmpRepo = await makeTmpRepo();
+    cleanups.push(repo.cleanup);
+
+    const orchId = projectKeyFromPath(repo.path);
+    await ensureOrchestraDir(orchId);
+    await writeState(orchId, makeInitialState({
+      orchestraId: orchId, projectPath: repo.path, permissionLevel: 'supervised',
+    }));
+
+    const sess = sessionName(orchId);
+    sessionsToKill.push(sess);
+    await createDetachedSession(sess, repo.path, 220, 50);
+    const { stdout: winId } = await execa('tmux', [
+      'new-window', '-t', sess, '-n', 'mus-001-tester', '-c', repo.path, '-d',
+      '-P', '-F', '#{window_id}',
+    ]);
+
+    await addMusician(orchId, {
+      id: 'mus-001',
+      name: 'tester',
+      task_summary: 't',
+      status: 'waiting',
+      tmux_window_id: winId.trim(),
+      claude_session_id: null,
+      worktree_path: null,
+      branch: null,
+      spawned_at: '2026-05-29T10:00:00Z',
+      last_activity: '2026-05-29T10:00:00Z',
+    });
+
+    const result = await messageMusician({
+      orchestraId: orchId,
+      musicianId: 'mus-001',
+      message: 'echo nfo-message-waiting-test',
+    });
+    await new Promise(r => setTimeout(r, 250));
+    const out = await capturePane(`${sess}:${winId.trim()}`, 20);
+    expect(out).toContain('nfo-message-waiting-test');
+    expect(result.delivery).toBe('immediate');
+    expect(result.pending_messages).toBe(0);
+
+    const state = await readState(orchId);
+    expect(state!.musicians[0].last_activity).not.toBe('2026-05-29T10:00:00Z');
+    expect(state!.musicians[0].status).toBe('working');
+
+    const log = await readFile(join(messageLogsDir(orchId), 'mus-001.jsonl'), 'utf8');
+    expect(log).toContain('"type":"message_queued"');
+    expect(log).toContain('"type":"message_delivered"');
+  });
+
   it('queues follow-up work when the musician is still working', async () => {
     const cfg = await makeTmpConfig();
     cleanups.push(cfg.cleanup);
