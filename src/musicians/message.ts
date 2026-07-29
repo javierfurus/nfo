@@ -1,6 +1,5 @@
-import { pasteText, sessionName } from '../tmux.js';
+import { sendKeys, sessionName } from '../tmux.js';
 import { readState } from '../state.js';
-import type { MusicianStatus } from '../state.types.js';
 import { findMusicianStrict } from './lookup.js';
 import {
   setMusicianStatus,
@@ -28,10 +27,6 @@ export interface MessageMusicianResult {
   pending_messages: number;
 }
 
-function isReadyForDelivery(status: MusicianStatus): boolean {
-  return status === 'idle' || status === 'waiting';
-}
-
 async function deliverPendingMessages(
   orchestraId: string,
   musicianId: string,
@@ -49,7 +44,7 @@ async function deliverPendingMessages(
 
   const target = `${sessionName(orchestraId)}:${musician.tmux_window_id}`;
   const message = formatQueuedMusicianMessages(pending);
-  await pasteText(target, message, true);
+  await sendKeys(target, message, true);
 
   const deliveredAt = new Date().toISOString();
   for (const pendingMessage of pending) {
@@ -73,7 +68,7 @@ export async function messageMusician(opts: MessageMusicianOptions): Promise<Mes
   const musician = findMusicianStrict(state, opts.musicianId);
   const queued = await queueMusicianMessage(opts.orchestraId, opts.musicianId, opts.message);
 
-  if (isReadyForDelivery(musician.status)) {
+  if (musician.status === 'idle') {
     const delivery: MusicianMessageDelivery = (await countPendingMusicianMessages(
       opts.orchestraId,
       opts.musicianId,

@@ -1,7 +1,6 @@
 import xtermHeadless from '@xterm/headless';
 import type { IBufferCell, IBufferLine, Terminal as XTermTerminal } from '@xterm/headless';
 import { spawn, type IPty } from 'node-pty';
-import { setDestroyUnattached } from '../tmux.js';
 
 const { Terminal } = xtermHeadless;
 
@@ -271,8 +270,6 @@ export class EmbeddedTerminal implements TerminalFeed {
   private title = 'Claude';
   private connected = true;
   private cursorHidden = false;
-  private readonly sessionName: string;
-  private destroyUnattachedArmed = false;
 
   // C1: frame-coalescing state
   private dirty = false;
@@ -284,7 +281,6 @@ export class EmbeddedTerminal implements TerminalFeed {
   private forceFullRebuild = true;
 
   public constructor(options: EmbeddedTerminalOptions) {
-    this.sessionName = options.sessionName;
     this.terminal = new Terminal({
       allowProposedApi: true,
       cols: options.cols,
@@ -325,13 +321,6 @@ export class EmbeddedTerminal implements TerminalFeed {
 
     this.disposables.push(
       this.pty.onData((data) => {
-        // First data confirms the attach client is actually live, so it is now safe to
-        // arm destroy-unattached: doing this earlier risks tmux destroying the freshly
-        // created detached session during the create-to-attach gap.
-        if (!this.destroyUnattachedArmed) {
-          this.destroyUnattachedArmed = true;
-          void setDestroyUnattached(this.sessionName, true);
-        }
         // C1: coalesce — write to xterm then schedule a flush instead of publishing immediately.
         this.terminal.write(data, () => {
           this.scheduleFlush();

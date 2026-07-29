@@ -38,7 +38,6 @@ export interface AppViewProps {
   activeMusicianName: string | null;
   errorMessage: string | null;
   orchestratorFocused: boolean;
-  sidebarVisible?: boolean;
   activeMusicianId?: string | null;
   orchestratorActive?: boolean;
   version: string;
@@ -54,7 +53,6 @@ export interface AppViewProps {
 
 export function AppView(props: AppViewProps): ReactElement {
   const pendingCount = props.pendingCount ?? 0;
-  const sidebarVisible = props.sidebarVisible ?? true;
   return (
     <Box width="100%" height={props.rows}>
       <Box flexDirection="row" width="100%" height="100%">
@@ -68,36 +66,34 @@ export function AppView(props: AppViewProps): ReactElement {
           copyMode={props.copyMode ?? false}
           terminalCols={props.terminalCols ?? 80}
         />
-        {sidebarVisible && (
-          <Box width={48} flexDirection="column">
-            <SidebarHeader
-              orchestraId={props.currentId}
-              musicianCount={props.musicians.length}
-              pendingCount={pendingCount}
-              version={props.version}
-            />
-            <ConcertHall
-              orchestras={props.orchestras}
-              currentId={props.currentId}
-            />
-            <Auditorium
-              musicians={props.musicians}
-              activity={props.activity}
-              selectedIndex={props.selectedIndex}
-              now={props.now}
-              orchestratorActive={props.orchestratorActive ?? false}
-              activeMusicianId={props.activeMusicianId ?? null}
-            />
-            <StatusBar
-              permissionLevel={props.permissionLevel}
-              tokenHint={props.tokenHint}
-              pendingCount={pendingCount}
-              dismissConfirmation={props.dismissConfirmation}
-              orchestratorFocused={props.orchestratorFocused}
-              lazygitInstalled={props.lazygitInstalled ?? false}
-            />
-          </Box>
-        )}
+        <Box width={48} flexDirection="column">
+          <SidebarHeader
+            orchestraId={props.currentId}
+            musicianCount={props.musicians.length}
+            pendingCount={pendingCount}
+            version={props.version}
+          />
+          <ConcertHall
+            orchestras={props.orchestras}
+            currentId={props.currentId}
+          />
+          <Auditorium
+            musicians={props.musicians}
+            activity={props.activity}
+            selectedIndex={props.selectedIndex}
+            now={props.now}
+            orchestratorActive={props.orchestratorActive ?? false}
+            activeMusicianId={props.activeMusicianId ?? null}
+          />
+          <StatusBar
+            permissionLevel={props.permissionLevel}
+            tokenHint={props.tokenHint}
+            pendingCount={pendingCount}
+            dismissConfirmation={props.dismissConfirmation}
+            orchestratorFocused={props.orchestratorFocused}
+            lazygitInstalled={props.lazygitInstalled ?? false}
+          />
+        </Box>
         {props.showHelp && (
           <Box
             position="absolute"
