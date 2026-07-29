@@ -72,6 +72,14 @@ Communication happens through Tmux and an MCP server, the Ink based UI wraps Cla
 
 `Superpowers` are supported and the skill knows that instead of regular subagents it should deploy Musicians to finish the tasks. It also recognizes that some tasks can be tackled sequentially or parallel as well.
 
+### Screen tiny. No see NFO. NFO bad!
+
+No longer the case! NFO automatically resizes and collapses the right sidebar when not in use to give space to your Claude session.
+
+All you have to do to toggle the right sidebar is press `Ctrl + b` and you are good to go!
+
+When collapsed you can access the right sidebar with `Ctrl + g` just like before.
+
 ### I had enough, let me go.
 
 You can dismantle your currently running Orchestras by simply running
@@ -96,7 +104,7 @@ Here are the currently known limitations and what should come in the future:
 - [x] Performance can degrade over time
 - [x] ~~The TUI can flicker because of the Node-PTY embedding~~
   - Now fresh fast and **flicker-free**!
-- [ ] The current Tmux based communication can be flaky
+- [x] ~~The current Tmux based communication can be flaky~~
 
 ## Requirements (These are bound to change as the project matures)
 
