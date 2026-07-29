@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.0.8](https://github.com/javierfurus/nfo/compare/nfo-cli-v0.0.7...nfo-cli-v0.0.8) (2026-07-29)
+
+
+### Features
+
+* add markdown support ([#16](https://github.com/javierfurus/nfo/issues/16)) ([4b77577](https://github.com/javierfurus/nfo/commit/4b77577a2476114a6208700455295317a68ca891))
+* improve tracking ([#18](https://github.com/javierfurus/nfo/issues/18)) ([8240e17](https://github.com/javierfurus/nfo/commit/8240e174f31565a72228283d2a52ed49274a7412))
+* **mcp:** add report_state tool for self-reported progress ([554e781](https://github.com/javierfurus/nfo/commit/554e7814def13ad6941ab168cc86856596b6494e))
+* **mcp:** report_done now sets waiting instead of idle ([76984eb](https://github.com/javierfurus/nfo/commit/76984eb40eac0adc4cf8236665a342f955cc3c21))
+* **spawn:** run nvm use before npm ci in fresh worktrees ([2db0146](https://github.com/javierfurus/nfo/commit/2db01460e615234e93ffb7e235b57c97a19fc8a1))
+* **state:** add setMusicianState updater with detail truncation ([8e42796](https://github.com/javierfurus/nfo/commit/8e42796f88e578f0e28e8b57e33a6fc113d865d9))
+* **state:** add waiting status + detail fields, recolor idle ([4048cb3](https://github.com/javierfurus/nfo/commit/4048cb3516eb3e7b28c9195029692a09a4a5588d))
+* **tui:** bootstrap-idle + ongoing-waiting liveness backstop ([0751491](https://github.com/javierfurus/nfo/commit/07514915080fb81468d129e9b0ce81f7b305808b))
+* **tui:** collapsible right sidebar with Ctrl+B auto-hide + narrow-screen force-hide ([55b5367](https://github.com/javierfurus/nfo/commit/55b53674e4f3d0b837c06db3aad2739b09a5897a))
+* **tui:** show model + runtime + self-reported detail in Auditorium ([c4b2a6f](https://github.com/javierfurus/nfo/commit/c4b2a6f7b240ff4b082ef58e45de0fde28c9542b))
+* update readme ([2b10708](https://github.com/javierfurus/nfo/commit/2b10708e06f314ff39cc3bcf80ccfb6153521375))
+
+
+### Bug Fixes
+
+* **message:** add sqlite ([de70c29](https://github.com/javierfurus/nfo/commit/de70c2916301c86f2faae59b4407d302d7bca316))
+* **message:** deliver queued messages to waiting (post-report_done) musicians ([e67899d](https://github.com/javierfurus/nfo/commit/e67899d59f31b3adecc26028df027a7826e849fe))
+* **tmux:** deliver large reports/messages via paste-buffer to avoid argv limit ([3924fc5](https://github.com/javierfurus/nfo/commit/3924fc561d89750e99f347e0a0bf15febbae6937))
+* **tmux:** launching multiple nfo sessions for the same project would kill tmux ([0375b6c](https://github.com/javierfurus/nfo/commit/0375b6c40b4dc9a20d11d58898acc62f752fc411))
+
 ## [0.0.7](https://github.com/javierfurus/nfo/compare/nfo-cli-v0.0.6...nfo-cli-v0.0.7) (2026-06-29)
 
 
