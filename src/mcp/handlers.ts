@@ -10,7 +10,6 @@ import { noteRead, noteWrite, noteList } from "../notes.js";
 import { readState } from "../state.js";
 import {
   setMusicianLatestReport,
-  setMusicianState,
   setMusicianStatus,
 } from "../state-updaters.js";
 import { findMusicianStrict } from "../musicians/lookup.js";
@@ -109,7 +108,7 @@ export async function dispatch(
         next_steps: nextSteps,
         reported_at: reportedAt,
       });
-      await setMusicianStatus(orchestraId, callerId, "waiting");
+      await setMusicianStatus(orchestraId, callerId, "idle");
       const deliveredMessages = await drainQueuedMusicianMessages(
         orchestraId,
         callerId,
@@ -130,18 +129,6 @@ export async function dispatch(
         delivered_messages: deliveredMessages,
         notified_orchestrator: deliveredMessages === 0,
       };
-    }
-    case "report_state": {
-      const detail = typeof args.detail === "string" ? args.detail : "";
-      const callerId =
-        typeof args._from_musician_id === "string"
-          ? args._from_musician_id
-          : opts.callerMusicianId;
-      if (!callerId) {
-        throw new Error("report_state: no caller musician id");
-      }
-      const stored = await setMusicianState(orchestraId, callerId, detail);
-      return { ok: true, detail: stored };
     }
     case "note_write": {
       await noteWrite(orchestraId, String(args.filename), String(args.content));

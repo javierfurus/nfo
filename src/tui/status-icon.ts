@@ -5,11 +5,8 @@ export function statusIcon(status: MusicianStatus): string {
     case 'working': {
       return '●';
     }
-    case 'waiting': {
-      return '◐';
-    }
     case 'idle': {
-      return '○';
+      return '◐';
     }
     case 'awaiting_permission': {
       return '⚠';
@@ -25,11 +22,8 @@ export function statusColor(status: MusicianStatus): string {
     case 'working': {
       return 'green';
     }
-    case 'waiting': {
-      return 'yellow';
-    }
     case 'idle': {
-      return 'gray';
+      return 'yellow';
     }
     case 'awaiting_permission': {
       return 'red';

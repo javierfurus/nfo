@@ -1,5 +1,4 @@
-import { access, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
 import { addMusician } from "../state-updaters.js";
@@ -61,7 +60,7 @@ export async function createMusician(
     if (!opts.dryRun) {
       // Fresh worktrees have no node_modules (gitignored); install before launch.
       try {
-        await installDependencies(worktreePath);
+        await execa("npm", ["ci"], { cwd: worktreePath });
       } catch (err) {
         // Roll back the half-created worktree so we don't leave an orphan, then abort.
         try {
@@ -161,44 +160,6 @@ export async function createMusician(
     branch,
     tmux_window_id: tmuxWindowId.trim(),
   };
-}
-
-/**
- * Install dependencies in a fresh worktree. When nvm is installed and the
- * worktree pins a Node version (.nvmrc / .node-version), source nvm and run
- * `nvm use` first so `npm ci` runs against the project's expected Node.
- */
-async function installDependencies(worktreePath: string): Promise<void> {
-  const nvmScript = await nvmScriptPath();
-  const pinsNodeVersion =
-    (await fileExists(join(worktreePath, ".nvmrc"))) ||
-    (await fileExists(join(worktreePath, ".node-version")));
-  if (nvmScript && pinsNodeVersion) {
-    // nvm is a shell function, so it must be sourced inside a shell before use.
-    await execa("bash", ["-c", `. "${nvmScript}" && nvm use && npm ci`], {
-      cwd: worktreePath,
-    });
-    return;
-  }
-  await execa("npm", ["ci"], { cwd: worktreePath });
-}
-
-async function nvmScriptPath(): Promise<string | null> {
-  const nvmDir = process.env.NVM_DIR ?? join(homedir(), ".nvm");
-  const script = join(nvmDir, "nvm.sh");
-  if (await fileExists(script)) {
-    return script;
-  }
-  return null;
-}
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function sanitiseName(name: string): string {

@@ -30,7 +30,7 @@ export function Auditorium(props: AuditoriumProps): ReactElement {
       {props.musicians.map((m, i) => {
         const selected = i + 1 === props.selectedIndex;
         const marker = selected ? "▸" : " ";
-        const runtime = formatRelativeTime(m.spawned_at, props.now);
+        const since = formatRelativeTime(m.last_activity, props.now);
         const line =
           m.status === "awaiting_permission"
             ? `awaiting: ${m.pending_permission ?? "tool"}`
@@ -42,12 +42,11 @@ export function Auditorium(props: AuditoriumProps): ReactElement {
               {marker}{" "}
               <Text color={statusColor(m.status)}>{statusIcon(m.status)}</Text>{" "}
               {m.id} {m.name}
-              {m.model ? <Text dimColor={true}> {m.model}</Text> : null}
               {active ? " [open]" : ""}
             </Text>
             <Text dimColor={true}>
               {" "}
-              {runtime} · {line}
+              {since} · {line}
             </Text>
           </Box>
         );

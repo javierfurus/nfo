@@ -10,12 +10,14 @@ import {
 } from "ink";
 import { AppView } from "./AppView.js";
 import { reduceKey } from "../keymap.js";
+import { pollActivity } from "../poll-activity.js";
 import {
   syncMusicianIdleState,
   type MusicianIdleTracker,
 } from "../poll-idle.js";
 import { pollPermissions } from "../poll-permission.js";
 import { setMusicianStatus } from "../../state-updaters.js";
+import { watchOrchestraState, type StopWatching } from "../watch-state.js";
 import { listOrchestras, type OrchestraSummary } from "../../commands/list.js";
 import { EmbeddedTerminal, type TerminalFeed } from "../embedded-terminal.js";
 import {
@@ -34,7 +36,6 @@ import {
   embeddedSessionName,
   ensureEmbeddedSession,
   killSession,
-  reapOrphanEmbeddedSessions,
   selectWindow,
   sessionName,
   setSessionOption,
@@ -49,7 +50,6 @@ import { reconcileMusicianLiveness } from "../../musicians/reconcile.js";
 import { readState } from "../../state.js";
 import { notifyAwaitingPermission } from "../../notify.js";
 import type { Musician, OrchestraState } from "../../state.types.js";
-import { computeSidebarVisible } from "../sidebar-visibility.js";
 
 export interface AppProps {
   orchestraId: string;
@@ -103,7 +103,6 @@ export function App(props: AppProps): ReactElement {
     string | null
   >(null);
   const [orchestratorFocused, setOrchestratorFocused] = useState(false);
-  const [autoHideMode, setAutoHideMode] = useState(false);
   const [copyMode, setCopyMode] = useState<CopyModeState>("off");
   const [selection, setSelection] = useState<SelectionRange | null>(null);
   const [lazygitInstalled, setLazygitInstalled] = useState(false);
@@ -135,20 +134,18 @@ export function App(props: AppProps): ReactElement {
     };
   }, []);
 
-  // Poll the orchestra state from the DB every 1s.
+  // Watch state.json.
   useEffect(() => {
-    const tick = async (): Promise<void> => {
-      const s = await readState(props.orchestraId);
-      if (s) {
-        setState(s);
-      }
-    };
-    void tick();
-    const timer = setInterval(() => {
-      void tick();
-    }, 1000);
+    let stop: StopWatching | undefined;
+    void watchOrchestraState(props.orchestraId, (s) => {
+      setState(s);
+    }).then((fn) => {
+      stop = fn;
+    });
     return () => {
-      clearInterval(timer);
+      if (stop) {
+        void stop();
+      }
     };
   }, [props.orchestraId]);
 
@@ -176,9 +173,7 @@ export function App(props: AppProps): ReactElement {
       await reconcileMusicianLiveness(props.orchestraId);
       const s = await readState(props.orchestraId);
       if (s) {
-        const a = Object.fromEntries(
-          s.musicians.map((m) => { return [m.id, m.detail ?? '']; }),
-        );
+        const a = await pollActivity(s);
         setActivity(a);
       }
     };
@@ -334,8 +329,12 @@ export function App(props: AppProps): ReactElement {
         setFeed(null);
         setErrorMessage(null);
         await runEmbeddedSessionOperation(embedSession, async () => {
-          await reapOrphanEmbeddedSessions(props.orchestraId);
+          await killSession(embedSession);
           await ensureEmbeddedSession(session, embedSession, projectPath);
+
+          if (!embeddedSessionLeaseIsCurrent(embeddedSessionLease)) {
+            await killSession(embedSession);
+          }
         });
         if (disposed || !embeddedSessionLeaseIsCurrent(embeddedSessionLease)) {
           return;
@@ -642,13 +641,6 @@ export function App(props: AppProps): ReactElement {
       return;
     }
 
-    if (key.ctrl && input.toLowerCase() === "b") {
-      setAutoHideMode((v) => {
-        return !v;
-      });
-      return;
-    }
-
     if (orchestratorFocused) {
       if (key.ctrl && input.toLowerCase() === "g") {
         setOrchestratorFocused(false);
@@ -805,12 +797,6 @@ export function App(props: AppProps): ReactElement {
     });
   }, [musicians.length]);
 
-  const sidebarVisible = computeSidebarVisible({
-    autoHideMode,
-    columns: windowSize.columns,
-    orchestratorFocused,
-  });
-
   const permissionLevel = state ? state.permission_level : "…";
   const pendingCount = musicians.filter((m) => {
     return m.status === "awaiting_permission";
@@ -847,7 +833,6 @@ export function App(props: AppProps): ReactElement {
       activeMusicianName={activePaneMusician?.name ?? null}
       errorMessage={errorMessage}
       orchestratorFocused={orchestratorFocused}
-      sidebarVisible={sidebarVisible}
       activeMusicianId={activePaneMusician?.id ?? null}
       orchestratorActive={activePaneMusician === null}
       version={props.version}
